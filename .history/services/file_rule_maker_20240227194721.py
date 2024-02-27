@@ -142,5 +142,5 @@ if "__main__" == __name__:
     
     # 测试第二个方法
     fields_list=['序号', '作品题目', '参赛类别', '作品学科分类', '学科门类', '一级学科', '作者', '是否为团队负责人', '性别', '生源地', '学号', '所在院系', '年级（如2020级本科生/硕士生/博士生）', '手机', '微信号', '邮箱', '指导教师姓名', '指导教师性别', '指导教师所在院系', '指导教师职称/职务', '指导教师电话', '指导教师电子邮箱']
-    excel_got=r"..\tests\for_fuker.extract\test2_dropdown.xlsx"
+    excel_got=r"..\tests\for_fuker.extract\test2_dropdown_hidensheet.xlsx"
     (Fuker.generate_user_rule_dict(excel_got,fields_list,field_row_num=5))
