@@ -1,5 +1,5 @@
 import openpyxl as px
-import io,json
+import io,json,re
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.utils import range_boundaries
 
@@ -72,7 +72,7 @@ class Excel_attribute:
             self.excel_wb = excel_wb
             self.excel_ws = excel_ws if excel_ws is not None else excel_wb.worksheets[0]
     
-    def get_some_field_cells(self,index,value_only=True):
+    def get_some_axis_cells(self,index,value_only=True):
         """获取某一行/列的单元格，依据参数返回单元格对象或值的list"""
         transform_cell=lambda cell:cell.value if value_only==True else cell
         excel_field=[transform_cell(cell) for cell in self.excel_ws[index] if cell.value]
@@ -131,8 +131,61 @@ class Excel_attribute:
         if type(cell_range_list)== str:cell_range_list=[cell_range_list]
         for cell_range in cell_range_list:
             self.modify_CertainRange_style(cell_range,**style_kwargs)
+
+    
+    def get_dropdowns(self):
+        """获取工作表内的各列的下拉列表字典，同一行多种下拉列表的以list组织"""
+        def get_dropdowns_values(validation):
+            result=validation.formula1
             
+            # 进一步，下拉列表不仅仅为序列
+            # 若值为工作表单元格引用
             
+            #捕获组 (.*!)? 是可选的，用来匹配任意字符后跟一个感叹号 !，代表可能存在的工作表名称。
+            pattern = r"^(.*!)?(\$?[A-Za-z]\$?\d+:\$?[A-Za-z]\$?\d+)$"
+            match_=re.search(pattern,result)
+            if match_:
+                match_groups=match_.groups()
+                # 若跨工作表引用(预计更为合理)
+                if (match_groups)[0]:
+                    dropdown_sourcesheet=self.excel_wb[match_groups[0][:-1]]
+                else:dropdown_sourcesheet=self.excel_ws
+                # 默认被引用为数据验证的单元格不止一个
+                min_col, min_row, max_col, max_row = range_boundaries(match_groups[-1].replace('$', ''))
+                value_list=[]
+                for i in range(min_row, max_row+1):
+                    for j in range(min_col, max_col+1):
+                        value_list.append(dropdown_sourcesheet.cell(i, j).value)
+                return value_list
+            
+            # 若值为简单的手动输入序列
+            elif "," in result:
+                # 去除首尾的引号后，直接拆分为值
+                return result[1:-1].split(',')
+            
+        drop_row=dict()
+
+        # 含有当前工作表的所有有效性验证的对象
+        validations = self.excel_ws.data_validations.dataValidation
+        for validation in validations:
+            
+            #当前有效性涉及区域
+            cell=str(validation.sqref)
+            
+            #目前的方式，仅匹配下拉列表选择所以值的。进一步：考虑介于等多种方式
+            result=(get_dropdowns_values(validation))
+
+            #如果是多列的下拉列表相同，分别进行检验
+            if " " in cell:
+                cells=cell.split(" ")
+                for i in cells:
+                    if i[0] not in drop_row:drop_row[i[0]]=[result]
+                    elif set(result) in [set(already_result) for already_result in drop_row[i[0]]]:continue
+                    else:drop_row[i[0]].append(result)
+            else:
+                if (cell)[0] not in drop_row:drop_row[(cell)[0]]=[result]
+                else:drop_row[cell[0]].append(result)
+        return drop_row
 def convert_to_json_stream(data):
     """将Python数据类型转化为JSON格式的字符串"""
     json_string = json.dumps(data)
@@ -143,8 +196,26 @@ def convert_to_json_stream(data):
     # 返回数据流
     return json_stream
 
+def read_from_json_stream(json_stream):
+    """从JSON数据流中读取数据并转换为Python数据类型"""
+    # 重置流的读取位置到起始处
+    json_stream.seek(0)
+    
+    # 从数据流中读取JSON数据并转换为Python数据类型
+    data = json.load(json_stream)
+    
+    # 返回Python数据类型
+    return data
+
+
 if "__main__" == __name__:
-    excel_attr = Excel_attribute(None)  # 创建一个新的Excel工作簿
+    excel_got=r"D:\SYZ_folder\活动\学工\23秋\A挑战杯-自动化\second_shot_0225-01-52\backend\tests\for_fuker.extract\test2_dropdown_hidensheet.xlsx"
+
+    Xio=Excel_IO()
+    excel_wb,excel_ws=Xio.load_workbook_from_stream(excel_got) if type(excel_got) !=str else Xio.read_excel_file(excel_got)
+    excel_attr = Excel_attribute(excel_wb)  # 创建一个新的Excel工作簿
+    for i,j in (excel_attr.get_dropdowns()).items():print("*",i,j)
+    """excel_attr = Excel_attribute(None)  # 创建一个新的Excel工作簿
     # 设置一个单元格的样式
     excel_attr.modify_cell_style(
         'A1',
@@ -159,7 +230,7 @@ if "__main__" == __name__:
         fill=PatternFill(fill_type='solid', start_color='569CD6'),
         alignment=Alignment(horizontal='center', vertical='center')
     )
-    excel_attr.excel_wb.save('example.xlsx')
+    excel_attr.excel_wb.save('example.xlsx')"""
     
 
 
