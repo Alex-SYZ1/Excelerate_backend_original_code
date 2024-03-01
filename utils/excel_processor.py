@@ -1,12 +1,15 @@
 import openpyxl as px
-import io,json,re
+import io,json,re,os
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.utils import range_boundaries
-
+import win32com.client as win32
 
 
 class Excel_IO:
-    
+    def __init__(self):
+        # Excel格式映射
+        self.FORMATS = {'xls': 56,    'xlsx': 51}
+        self.temp_path="../tmp/"
     def read_excel_file(self, excel_path, sheet_index=0):
         """openpyxl读取某路径的excel文件"""
         try:
@@ -26,12 +29,7 @@ class Excel_IO:
             # 使用BytesIO创建一个类似文件的对象
             excel_bytes = io.BytesIO(excel_data)
             return self.read_excel_file(excel_bytes)
-            """excel_wb = px.load_workbook(filename=excel_bytes,data_only=True)
-            excel_ws = excel_wb.worksheets[sheet_index]
-            return (excel_wb,excel_ws)
-        except IOError as e:
-            print(f"An error occurred: {e}")
-            return None"""
+
 
     def save_excel(self, excel_wb, excel_path):
         """openpyxl传输wb对象到excel文件"""
@@ -59,10 +57,54 @@ class Excel_IO:
             print(f"An error occurred during streaming: {e}")
             return None
 
-    
-    
+    def convert_excel_format(self,input_bytes, src_format, dst_format,save_dst=False):
+        """根据参数将数据流中的excel格式进行转化，并输出为数据流,默认在temp文件夹中产生的临时文件"""
+        # 确保源格式和目标格式是受支持的
+        if src_format not in self.FORMATS or dst_format not in self.FORMATS:
+            raise ValueError('Unsupported format specified.')
+
+        src_tempfile_path=os.path.join(self.temp_path,f"temp.{src_format}")
+        dst_tempfile_path=os.path.join(self.temp_path,f"temp.{dst_format}")
+        
+        # 创建 Excel 对象
+        excel = win32.gencache.EnsureDispatch('Excel.Application')
+        excel.Visible = False  # 不显示Excel界面
+        
+        # 创建输出流
+        output_io = io.BytesIO()
+
+        # 将输入BytesIO对象中的内容写入临时源文件
+        with open(src_tempfile_path, "wb") as temp_file:
+            temp_file.write(input_bytes.getvalue())
+        print("*********************",os.path.abspath(src_tempfile_path))
+        # 打开源文件
+        workbook = excel.Workbooks.Open(os.path.abspath(src_tempfile_path))
+
+        # 另存为目标格式的文件
+        workbook.SaveAs(dst_tempfile_path, FileFormat=self.FORMATS[dst_format])
+        workbook.Close(False)
+
+        # 读取目标文件到BytesIO对象
+        with open(dst_tempfile_path, "rb") as temp_file:
+            output_io.write(temp_file.read())
+
+        # 清理临时文件
+        os.remove(src_tempfile_path)
+        
+        #在最后的保存excel步骤，可先保留文件至temp文件夹，再传输到用户选择的文件夹
+        if not save_dst:
+            os.remove(dst_tempfile_path)
+
+        # 关闭 Excel 进程
+        excel.Application.Quit()
+
+        # 设置输出流的指针回到起始位置，以便于读取
+        output_io.seek(0)
+        return output_io
+
+
 class Excel_attribute:
-    """目前只考虑了一个工作簿&其一个工作表的修改，QUESTION无法实现多个工作表同时修改"""
+    """目前只考虑了一个工作簿&其一个工作表的修改，进一步：无法实现多个工作表同时修改"""
     def __init__(self, excel_wb=None , excel_ws=None):
         """类无传输值分别表示创建新wb、读取wb第一个工作表"""
         if excel_wb is None:
@@ -186,8 +228,10 @@ class Excel_attribute:
                 if (cell)[0] not in drop_row:drop_row[(cell)[0]]=[result]
                 else:drop_row[cell[0]].append(result)
         return drop_row
+    
+    
 def convert_to_json_stream(data):
-    """将Python数据类型转化为JSON格式的字符串"""
+    """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
     json_string = json.dumps(data)
     
     # 创建一个StringIO对象，它提供了文件类的接口
@@ -197,7 +241,7 @@ def convert_to_json_stream(data):
     return json_stream
 
 def read_from_json_stream(json_stream):
-    """从JSON数据流中读取数据并转换为Python数据类型"""
+    """从JSON数据流中读取数据并转换为Python数据类型，后端不再使用。"""
     # 重置流的读取位置到起始处
     json_stream.seek(0)
     
@@ -206,31 +250,20 @@ def read_from_json_stream(json_stream):
     
     # 返回Python数据类型
     return data
-
+def read_from_json_file(file_path):
+    """从JSON文件中读取数据并转换为Python数据类型"""
+    with open(file_path, 'r',encoding="utf-8") as json_file:
+        data = json.load(json_file)
+    return data
 
 if "__main__" == __name__:
-    excel_got=r"D:\SYZ_folder\活动\学工\23秋\A挑战杯-自动化\second_shot_0225-01-52\backend\tests\for_fuker.extract\test2_dropdown_hidensheet.xlsx"
-
+    os.chdir(os.path.abspath(os.path.dirname(__file__)))
+    excel_got="../tests/for_xls2xlsx/xlsx_file.xlsx"
+    print(os.listdir())
     Xio=Excel_IO()
-    excel_wb,excel_ws=Xio.load_workbook_from_stream(excel_got) if type(excel_got) !=str else Xio.read_excel_file(excel_got)
-    excel_attr = Excel_attribute(excel_wb)  # 创建一个新的Excel工作簿
-    for i,j in (excel_attr.get_dropdowns()).items():print("*",i,j)
-    """excel_attr = Excel_attribute(None)  # 创建一个新的Excel工作簿
-    # 设置一个单元格的样式
-    excel_attr.modify_cell_style(
-        'A1',
-        font=Font(name='Calibri', size=12, bold=True),
-        fill=PatternFill(fill_type='solid', start_color='FFFF00'),
-        alignment=Alignment(horizontal='center', vertical='center')
-    )
-    # 设置一个多分布单元格区域的样式
-    excel_attr.modify_MutipleRange_style(
-        ["B1:C3","b4:C8"],
-        font=Font(name='Calibri', size=12, bold=True),
-        fill=PatternFill(fill_type='solid', start_color='569CD6'),
-        alignment=Alignment(horizontal='center', vertical='center')
-    )
-    excel_attr.excel_wb.save('example.xlsx')"""
+    xlsx_wb=px.load_workbook(excel_got)
+    xlsx_stream=Xio.stream_excel_to_frontend(xlsx_wb)
+    Xio.convert_excel_format(xlsx_stream,"xlsx","xls",True)
     
 
 
