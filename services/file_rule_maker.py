@@ -33,7 +33,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         elif self.file_name.endswith("xls"):
             return #进一步：后端转化格式。
         else:raise TypeError#进一步：报错内容文本商讨。后端传输代号，前端呈现错误信息。
-        # 到底在这个函数保留什么？excel?wb?ws?还需思考
+        
     def generate_user_rule_dict(self,
                                 fields_index_col: dict) -> dict:
         """
@@ -66,6 +66,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         
         # 获取文件并转化
         Xio=XPRO.Excel_IO()
+        excel_got=self.file_stream
         """项目实际部署时，无需判断是否为字符串，全部为前端发送的数据流.即改为excel_wb,excel_ws=Xio.load_workbook_from_stream(excel_got)"""
         excel_wb,excel_ws=Xio.load_workbook_from_stream(excel_got) if type(excel_got) !=str else Xio.read_excel_file(excel_got)
         
@@ -87,8 +88,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         for j,k in Field_rules.items():
             print("*",j,k)
             
-        OUTPUT=XPRO.convert_to_json_stream(Field_rules)
-        return OUTPUT
+        return Field_rules
 
 
     def create_final_rules_and_examples(self, selected_field_rules) -> io.StringIO:

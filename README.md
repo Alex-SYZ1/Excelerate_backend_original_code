@@ -63,7 +63,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 + 2024.2.28
   + 确定了学校端服务类(FileRuleMaker)下各个方法的参数、返回值，进行了详细的解释。暂未修改方法下对应代码，前端可根据参数、返回值、解释理解后端方法，先行进行前端代码编写。
 + 2024.2.29-3.2
-  + 去掉学校端服务类(FileRuleMaker)下第一方法，修改各方法参数、返回值类型
+  + 去掉学校端服务类(FileRuleMaker)下第一方法，修改各方法参数、返回值类型，研究xls2xlsx
++ 2024.3.2
+  + 添加学校端服务类(FileRuleMaker)下的get_file方法，研究成功规则写入excel下拉列表
 ## 联系方式
 |姓名|电话|微信号|邮箱|
 |---|---|---|---|
