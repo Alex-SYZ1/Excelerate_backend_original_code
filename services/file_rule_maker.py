@@ -11,16 +11,33 @@ import utils.string_processor as StringPRO
 class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性，贯穿始终
     def __init__(self):
         self.file_name=None
-        self.file_rule_dict=dict()
-        self.rule_choice_sepaprator=","#进一步：后端存储列表类型相关内容，传给前端的是join为字符串的内容，默认以英文逗号间隔同一规则内的各个选项，可用户自定义修改
+        self.file_stream=None#
+        self.Xio=None#进一步：读写全部用这个对象读取。
         self.predefined_rules_path="../rules/predefined_rules.json"
         self.predefined_rules=XPRO.read_from_json_file(self.predefined_rules_path)
-    def generate_user_rule_dict(self, 
+        self.rule_choice_sepaprator=","#进一步：后端存储列表类型相关内容，传给前端的是join为字符串的内容，默认以英文逗号间隔同一规则内的各个选项，可用户自定义修改
+        self.file_rule_dict=dict()
+        
+    def get_file_stream        (self, 
                                 excel_got: io.BytesIO, 
                                 file_name: str, 
+                                ) -> io.BytesIO:
+        """
+            从数据流接收  ：含字段的空文件+其文件名
+            输出到数据流  ：转化后(若需)的含字段的文件数据流
+        """
+        self.file_name=file_name
+        self.file_stream=excel_got
+        if self.file_name.endswith("xlsx"):
+            return self.file_stream
+        elif self.file_name.endswith("xls"):
+            return #进一步：后端转化格式。
+        else:raise TypeError#进一步：报错内容文本商讨。后端传输代号，前端呈现错误信息。
+        # 到底在这个函数保留什么？excel?wb?ws?还需思考
+    def generate_user_rule_dict(self,
                                 fields_index_col: dict) -> dict:
         """
-            从数据流接收  ：含字段的空文件+其文件名+用户选择的位置与字段值的对应字典
+            从数据流接收  ：用户选择的位置与字段值的对应字典
             输出到数据流  ：包含预定义规则和下拉列表的字典
 
             Parameters from stream:
@@ -82,8 +99,8 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
             Parameters from stream:
                 selected_field_rules (dict_saved_in_json_stream): 
                     content:用户确定后的规则字典
-                    format :{"字段位置1":["字段名1",["最终规则选项1","最终规则选项1"],
-                            "字段位置2":["字段名2",["最终规则选项1","最终规则选项1"],
+                    format :{"字段位置1":["字段名1",["最终规则选项1","最终规则选项2"],
+                            "字段位置2":["字段名2",["最终规则选项1","最终规则选项3"],
                             "字段位置3":同上...}
                         
 
@@ -96,7 +113,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         """
 
        
-        pass  # TODO: 实现方法
+        selected_field_rules
 
     def save_final_rules(self, excel_saving_mode:io.StringIO,files_saving_path:io.StringIO):
         """
