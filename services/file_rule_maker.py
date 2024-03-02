@@ -144,7 +144,8 @@ if "__main__" == __name__:
     fields_index_col=dict(zip(
         "A5 B5 C5 D5 E5 F5 G5 H5 I5 J5 K5 L5 M5 N5 O5 P5 Q5 R5 S5 T5 U5 V5 ".split(),
         ['序号', '作品题目', '参赛类别', '作品学科分类', '学科门类', '一级学科', '作者', '是否为团队负责人', '性别', '生源地', '学号', '所在院系', '年级（如2020级本科生/硕士生/博士生）', '手机', '微信号', '邮箱', '指导教师姓名', '指导教师性别', '指导教师所在院系', '指导教师职称/职务', '指导教师电话', '指导教师电子邮箱']))
-    print(Fuker.generate_user_rule_dict(excel_got,file_name,fields_index_col))
+    Fuker.get_file_stream(excel_got,file_name)
+    print(Fuker.generate_user_rule_dict(fields_index_col))
     #Fuker.create_final_rules_and_examples()
     #Fuker.save_final_rules()
     
