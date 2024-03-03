@@ -13,7 +13,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         self.file_name=None
         self.file_stream=None#
         self.Xio=None#进一步：读写全部用这个对象读取。
-        self.predefined_rules_path="../rules/predefined_rules.json"
+        self.predefined_rules_path="rules/predefined_rules.json"
         self.predefined_rules=XPRO.read_from_json_file(self.predefined_rules_path)
         self.rule_choice_sepaprator=","#进一步：后端存储列表类型相关内容，传给前端的是join为字符串的内容，默认以英文逗号间隔同一规则内的各个选项，可用户自定义修改
         self.file_rule_dict=dict()
@@ -111,7 +111,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                             "字段位置2":...同上}
                 simulate_rule_excel (excel_file):含有字段行、最终规则和样例行、最终规则下拉列表的Excel文件
         """
-
+        
        
         selected_field_rules
 
@@ -139,7 +139,7 @@ if "__main__" == __name__:
 
     print("测试第一个方法")
     Fuker=FileRuleMaker()
-    excel_got=r"../tests/for_fuker.extract/test2_dropdown.xlsx"
+    excel_got=r"tests/for_fuker.extract/test2_dropdown.xlsx"
     file_name="test2_dropdown.xlsx"
     fields_index_col=dict(zip(
         "A5 B5 C5 D5 E5 F5 G5 H5 I5 J5 K5 L5 M5 N5 O5 P5 Q5 R5 S5 T5 U5 V5 ".split(),
