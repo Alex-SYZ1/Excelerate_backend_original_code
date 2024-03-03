@@ -270,7 +270,7 @@ class Excel_attribute:
 
     def set_dropdowns(self, selected_field_rules, sep_row=2):
         """将用户选定的规则字典导出到下拉列表，默认假设字段在第n行，在第n+1行添加规则样例行，n+2开始是下拉列表"""
-        selected_field_rules = {k: v for k, v in selected_field_rules.items() if v[1]}  # 去掉规则列表没有内容的字段
+        #selected_field_rules = {k: v for k, v in selected_field_rules.items() if v[1]}  # 去掉规则列表没有内容的字段
         
         for one_index_col, (field_name, rule_list) in selected_field_rules.items():
             if rule_list:  # 当规则列表有内容时
@@ -286,7 +286,69 @@ class Excel_attribute:
                 dv = DataValidation(type="list", formula1=formula1, showErrorMessage=True, allow_blank=False)
                 self.excel_ws.add_data_validation(dv)
                 dv.add(sqref)
-                
+
+    def set_validation_rules_and_example(self, one_index_col, field_name, rule_list, example):
+        """
+        设置规则和样例到指定单元格，并且如果规则过长，只使用规则列表的前n项，
+        使得len(",".join(rule_list[:n]))<20，并在后面加上"等{len(rule_list)}个选项"。
+        同时设置单元格字体为红色。
+        """
+        # 计算合适的规则字符串长度
+        rule_display = ",".join(rule_list)
+        if len(rule_display) > 20:
+            rule_display = ""  # 初始化规则显示字符串
+            count = 0  # 记录已经拼接的字符数量
+            for rule in rule_list:
+                if count + len(rule) < 20:
+                    if rule_display:  # 如果不是第一个规则，添加逗号
+                        rule_display += ","
+                    rule_display += rule
+                    count += len(rule) + 1  # 加1因为逗号的长度
+                else:
+                    break
+            rule_display += f"等{len(rule_list)}个选项"
+
+        """# 设置单元格的值
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment
+        from openpyxl.styles.differential import DifferentialStyle
+        from openpyxl.formatting.rule import Rule
+        from openpyxl.styles import Color, PatternFill, Font, Border
+
+        # 假设rule_display和example是已经定义好的变量
+        rule_display = "这是规则"
+        example = "这是样例"
+
+        # 创建富文本字符串
+        rich_text = openpyxl.styles.RichText()
+
+        # 添加红色字体的片段
+        red_font = Font(color="FF0000", size=7)
+        rich_text.append("·规则：", red_font)
+        rich_text.append(rule_display)
+
+        # 添加换行符
+        rich_text.append("\n")
+
+        # 继续添加红色字体的片段
+        rich_text.append("·样例：", red_font)
+        rich_text.append(example)
+
+        # 现在假设self.excel_ws已经指向一个Worksheet对象
+        cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]
+
+        # 将富文本字符串赋值给单元格
+        cell.value = rich_text
+
+        # 设置单元格的自动换行
+        cell.alignment = Alignment(wrapText=True)"""
+
+        cell_value = f"·规则：{rule_display}\n·样例：{example}"
+        cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]
+        cell.value = cell_value
+        cell.font = Font(color="FF0000",size=7)  # 红色字体
+        cell.alignment = Alignment(wrapText=True)  # 开启自动换行"""
+
                 
 def convert_to_json_stream(data):
     """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
@@ -315,6 +377,17 @@ def read_from_json_file(file_path):
     return data
 
 if "__main__" == __name__:
+    excel_got=r"tests\for_fuker.func3\test_add_ruleexample_row.xlsx"
+    Xio=Excel_IO()
+    xlsx_wb=px.load_workbook(excel_got)
+    Xattr = Excel_attribute(xlsx_wb)  # 假设xlsx_wb是openpyxl load_workbook()的结果
+    one_index_col = 'C5'
+    field_name = '参赛类别'
+    rule_list = ['理工农医类', '社会调查报告和人文社科类', '发明创造科技制作类', '额外选项1', '额外选项2']  # 更长的列表可以替换这里
+    example = '这是一个样例'
+
+    Xattr.set_validation_rules_and_example(one_index_col, field_name, rule_list, example)
+    xlsx_wb.save(r"tests\for_fuker.func3\output-test_add_ruleexample_row.xlsx")
     """
     excel_got="tests/for_fuker.func2/test2_dropdown.xlsx"
     print(os.listdir())

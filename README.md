@@ -66,6 +66,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
   + 去掉学校端服务类(FileRuleMaker)下第一方法，修改各方法参数、返回值类型，研究xls2xlsx
 + 2024.3.2
   + 添加学校端服务类(FileRuleMaker)下的get_file方法，研究成功规则写入excel下拉列表
++ 2024.3.3
+  + 添加学校端服务类(FileRuleMaker)下的create_final_rules_and_examples方法，完善之前方法少数细节
 ## 联系方式
 |姓名|电话|微信号|邮箱|
 |---|---|---|---|

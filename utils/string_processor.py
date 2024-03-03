@@ -16,9 +16,6 @@ def best_match(target, options):
     
     else:return matches[0]
 
-import re
-import random
-
 def generate_strict_regex_and_example(input_list):
     # 使用 '^' 和 '$' 生成严格匹配列表中任一项的正则表达式
     regex_pattern = r'^(?:' + '|'.join(re.escape(item) for item in input_list) + r')$'
@@ -26,7 +23,7 @@ def generate_strict_regex_and_example(input_list):
     # 从列表中随机选择一个样例
     random_example = random.choice(input_list)
     
-    return regex_pattern, random_example
+    return [regex_pattern, random_example]
 
 # 使用正则表达式
 def match_with_regex(regex, string_to_test):
@@ -42,16 +39,17 @@ best_match_string = best_match(target_string, options_list)
 print(best_match_string)
 """
 
-# 示例使用re
-my_list = ['apple', 'banana', 'cherry']
-regex, example = generate_strict_regex_and_example(my_list)
+if "__main__" == __name__:
+    # 示例使用re
+    my_list = ['apple', 'banana', 'cherry']
+    regex, example = generate_strict_regex_and_example(my_list)
 
-# 验证正则表达式
-test_string = 'banana'
-if match_with_regex(regex, test_string):
-    print(f'The string "{test_string}" is an exact match in the list.')
-else:
-    print(f'The string "{test_string}" does not exactly match any item in the list.')
+    # 验证正则表达式
+    test_string = 'banana'
+    if match_with_regex(regex, test_string):
+        print(f'The string "{test_string}" is an exact match in the list.')
+    else:
+        print(f'The string "{test_string}" does not exactly match any item in the list.')
 
-print(f'Regex: {regex}')
-print(f'Random example: {example}')
+    print(f'Regex: {regex}')
+    print(f'Random example: {example}')
