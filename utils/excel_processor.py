@@ -1,10 +1,10 @@
 import openpyxl as px
-import io,json,re,os
+import io,json,re,os,warnings,shutil
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import range_boundaries
 import win32com.client as win32
-
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class Excel_IO:
     def __init__(self):
@@ -58,14 +58,18 @@ class Excel_IO:
             print(f"An error occurred during streaming: {e}")
             return None
 
-    def convert_excel_format(self,input_bytes, src_format, dst_format,save_dst=False):
+    def convert_excel_format(self,input_bytes, src_format, dst_format,save_dst=True):
         """根据参数将数据流中的excel格式进行转化，并输出为数据流,默认在temp文件夹中产生的临时文件"""
+        
+        # 清理之前的临时文件
+        clear_directory(self.temp_path)
+        
         # 确保源格式和目标格式是受支持的
         if src_format not in self.FORMATS or dst_format not in self.FORMATS:
             raise ValueError('Unsupported format specified.')
 
-        src_tempfile_path=os.path.join(self.temp_path,f"temp.{src_format}")
-        dst_tempfile_path=os.path.join(self.temp_path,f"temp.{dst_format}")
+        src_tempfile_path=os.path.abspath(os.path.join(self.temp_path,f"temp.{src_format}"))
+        dst_tempfile_path=os.path.abspath(os.path.join(self.temp_path,f"temp.{dst_format}"))
         
         # 创建 Excel 对象
         excel = win32.gencache.EnsureDispatch('Excel.Application')
@@ -77,13 +81,12 @@ class Excel_IO:
         # 将输入BytesIO对象中的内容写入临时源文件
         with open(src_tempfile_path, "wb") as temp_file:
             temp_file.write(input_bytes.getvalue())
-        print("*********************",os.path.abspath(src_tempfile_path))
         # 打开源文件
         workbook = excel.Workbooks.Open(os.path.abspath(src_tempfile_path))
 
         # 另存为目标格式的文件
         workbook.SaveAs(dst_tempfile_path, FileFormat=self.FORMATS[dst_format])
-        workbook.Close(False)
+        workbook.Close(True)
 
         # 读取目标文件到BytesIO对象
         with open(dst_tempfile_path, "rb") as temp_file:
@@ -349,63 +352,60 @@ class Excel_attribute:
         cell.font = Font(color="FF0000",size=7)  # 红色字体
         cell.alignment = Alignment(wrapText=True)  # 开启自动换行"""
 
-                
-def convert_to_json_stream(data):
-    """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
-    json_string = json.dumps(data)
-    
-    # 创建一个StringIO对象，它提供了文件类的接口
-    json_stream = io.StringIO(json_string)
-    
-    # 返回数据流
-    return json_stream
+if 1:# 一些简单的格式转换和读取           
+    def convert_to_json_stream(data):
+        """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
+        json_string = json.dumps(data)
+        
+        # 创建一个StringIO对象，它提供了文件类的接口
+        json_stream = io.StringIO(json_string)
+        
+        # 返回数据流
+        return json_stream
 
-def read_from_json_stream(json_stream):
-    """从JSON数据流中读取数据并转换为Python数据类型，后端不再使用。"""
-    # 重置流的读取位置到起始处
-    json_stream.seek(0)
-    
-    # 从数据流中读取JSON数据并转换为Python数据类型
-    data = json.load(json_stream)
-    
-    # 返回Python数据类型
-    return data
-def read_from_json_file(file_path):
-    """从JSON文件中读取数据并转换为Python数据类型"""
-    with open(file_path, 'r',encoding="utf-8") as json_file:
-        data = json.load(json_file)
-    return data
+    def read_from_json_stream(json_stream):
+        """从JSON数据流中读取数据并转换为Python数据类型，后端不再使用。"""
+        # 重置流的读取位置到起始处
+        json_stream.seek(0)
+        
+        # 从数据流中读取JSON数据并转换为Python数据类型
+        data = json.load(json_stream)
+        
+        # 返回Python数据类型
+        return data
+    def read_from_json_file(file_path):
+        """从JSON文件中读取数据并转换为Python数据类型"""
+        with open(file_path, 'r',encoding="utf-8") as json_file:
+            data = json.load(json_file)
+        return data
+
+    def clear_directory(path):
+        # 检查路径是否存在
+        if os.path.exists(path):
+            # 遍历目录中的所有内容
+            for filename in os.listdir(path):
+                file_path = os.path.join(path, filename)
+                try:
+                    # 如果是文件夹，则递归删除
+                    if os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                    # 如果是文件，则删除文件
+                    else:
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f'Failed to delete {file_path}. Reason: {e}')
+
+
 
 if "__main__" == __name__:
-    excel_got=r"tests\for_fuker.func3\test_add_ruleexample_row.xlsx"
     Xio=Excel_IO()
-    xlsx_wb=px.load_workbook(excel_got)
-    Xattr = Excel_attribute(xlsx_wb)  # 假设xlsx_wb是openpyxl load_workbook()的结果
-    one_index_col = 'C5'
-    field_name = '参赛类别'
-    rule_list = ['理工农医类', '社会调查报告和人文社科类', '发明创造科技制作类', '额外选项1', '额外选项2']  # 更长的列表可以替换这里
-    example = '这是一个样例'
+    output=io.BytesIO()
+    excel_got=r"tests\for_xls2xlsx\xls_file.xls"
+    with open(excel_got, 'rb') as file:
+        output.write(file.read())
+    # 重置流的位置到开始处，这样就可以从头读取
+    output.seek(0)
+    Xio.convert_excel_format(output,"xls","xlsx",True)
+    input("xls文件已转化为xlsx文件，保存在tests/for_xls2xlsx目录下，请查看")
 
-    Xattr.set_validation_rules_and_example(one_index_col, field_name, rule_list, example)
-    xlsx_wb.save(r"tests\for_fuker.func3\output-test_add_ruleexample_row.xlsx")
-    """
-    excel_got="tests/for_fuker.func2/test2_dropdown.xlsx"
-    print(os.listdir())
-    Xio=Excel_IO()
-    xlsx_wb=px.load_workbook(excel_got)
-    xlsx_stream=Xio.stream_excel_to_frontend(xlsx_wb)
-    Xattr=Excel_attribute(xlsx_wb)
-    Xattr.get_dropdowns()
-    #Xio.convert_excel_format(xlsx_stream,"xlsx","xls",True)
-    """
-    # 测试将规则写入下拉列表
-    selected_field_rules={'a5': ('序号', []), 'b5': ('作品题目', []), 'c5': ('参赛类别', []), 'd5': ('作品学科分类', ['理工农医类', '社会调查报告和人文社科类', '发明创造科技制作类']), 'e5': ('学科门类', ['哲学', '经济学', '法学', '教育学', '文学', '历史学', '理学', '工学', '农学', '医学', '军事学', '管理学', '艺术学']), 'f5': ('一级学科', ['哲学', '理论经济学', '应用经济学', '法学', '政治学', '社会学', '民族学', '马克思主义理论', '公安学', '教育学', '心理学', '体育学', '中国语言文学', '外国语言文学', '新闻传播学', '考古学', '中国史', '世界史', '数学', '物理学', '化学', '天文学', '地理学', '大气科学', '海洋科学', '地球物理学', '地质学', '生物学', '系统科学', '科学技术史', '生态学', '统计学', '力学', '机械工程', '光学工程', '仪器科学与技术', '材料科学与工程', '冶金工程', '动力工程及工程热物理', '电气工程', '电子科学与技术', '信息与通信工程', '控制科学与工程', '计算机科学与技术', '建筑学', '土木工程', '水利工程', '测绘科学与技术', '化学工程与技术', '地质资源与地质工程', '矿业工程', '石油与天然气工程', '纺织科学与工程', '轻工技术与工程', '交通运输工程', '船舶与海洋工程', '航空宇航科学与技术', '兵器科学与技术', '核科学与技术', '农业工程', '林业工程', '环境科学与工程', '生物医学工程', '食品科学与工程', '城乡规划学', '风景园林学', '软件工程', '生物工程', '安全科学与工程', '公安技术', '网络空间安全', '作物学', '园艺学', '农业资源与环境', '植物保护', '畜牧学', '兽医学', '林学', '水产', '草学', '基础医学', '临床医学', '口腔医学', '公共卫生与预防医学', '中医学', '中西医结合', '药学', '中药学', '特种医学', '医学技术', '护理学', '军事思想及军事历史', '战略学', '战役学', '战术学', '军队指挥学', '军事管理学', '军队政治工作学', '军事后勤学', '军事装备学', '军事训练学', '管理科学与工程', '工商管理', '农林经济管理', '公共管理', '图书情报与档案管理', '艺术学理论', '音乐与舞蹈学', '戏剧与影视学', '美术学', '设计学']), 'g5': ('作者', []), 'h5': ('是否为团队负责人', ['是', '否']), 'i5': ('性别', ['男', '女']), 'j5': ('生源地', ['北京', '天津', '上海', '重庆', '河北', '山西', '辽宁', '吉林', '黑龙江', '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东', '海南', '四川', '贵州', '云南', '陕西', '甘肃', '青海', '台湾', '内蒙古', '广西', '西藏', '宁夏', '新疆', '香港', '澳门', '其他']), 'k5': ('学号', []), 'l5': ('所在院系', ['数学科学学院', '物理学院', '化学与分子工程学院', '生命科学学院', '地球与空间科学学院', '城市与环境学院', '心理与认知科学学院', '建筑与景观设计学院', '信息科学技术学院', '工学院', '王选计算机研究所', '软件与微电子学院', '环境科学与工程学院', '软件工程国家工程研究中心', '中国语言文学系', '历史学系', '考古文博学院', '哲学系', '外国语学院', '艺术学院', '对外汉语教育学院', '歌剧研究院', '国际关系学院', '法学院', '信息管理系', '社会学系', '政府管理学院', '马克思主义学院', '教育学院', '新闻与传播学院', '体育教研部', '新媒体研究院', '教育财政科学研究所', '经济学院', '光华管理学院', '人口研究所', '国家发展研究院', '基础医学院', '药学院', '公共卫生学院', '护理学院', '医学人文学院', '医学继续教育学院', '第一医院', '人民医院', '第三医院', '口腔医院', '北京肿瘤医院', '第六医院', '深圳医院', '首钢医院', '国际医院', '滨海医院', '元培学院', '燕京学堂', '先进技术研究院', '前沿交叉学科研究院', '中国社会科学调查中心', '分子医学研究所', '科维理天文研究所', '核科学与技术研究院', '北京国际数学研究中心', '海洋研究院', '现代农学院', '人文社会科学研究院', '信息工程学院', '化学生物学与生物技术学院', '环境与能源学院', '城市规划与设计学院', '新材料学院', '汇丰商学院', '国际法学院', '人文社会科学学院']), 'm5': ('年级（如2020级本科生/硕士生/博士生）', []), 'n5': ('手机', []), 'o5': ('微信号', []), 'p5': ('邮箱', []), 'q5': ('指导教师姓名', []), 'r5': ('指导教师性别', ['男', '女']), 's5': ('指导教师所在院系', ['数学科学学院', '物理学院', '化学与分子工程学院', '生命科学学院', '地球与空间科学学院', '城市与环境学院', '心理与认知科学学院', '建筑与景观设计学院', '信息科学技术学院', '工学院', '王选计算机研究所', '软件与微电子学院', '环境科学与工程学院', '软件工程国家工程研究中心', '中国语言文学系', '历史学系', '考古文博学院', '哲学系', '外国语学院', '艺术学院', '对外汉语教育学院', '歌剧研究院', '国际关系学院', '法学院', '信息管理系', '社会学系', '政府管理学院', '马克思主义学院', '教育学院', '新闻与传播学院', '体育教研部', '新媒体研究院', '教育财政科学研究所', '经济学院', '光华管理学院', '人口研究所', '国家发展研究院', '基础医学院', '药学院', '公共卫生学院', '护理学院', '医学人文学院', '医学继续教育学院', '第一医院', '人民医院', '第三医院', '口腔医院', '北京肿瘤医院', '第六医院', '深圳医院', '首钢医院', '国际医院', '滨海医院', '元培学院', '燕京学堂', '先进技术研究院', '前沿交叉学科研究院', '中国社会科学调查中心', '分子医学研究所', '科维理天文研究所', '核科学与技术研究院', '北京国际数学研究中心', '海洋研究院', '现代农学院', '人文社会科学研究院', '信息工程学院', '化学生物学与生物技术学院', '环境与能源学院', '城市规划与设计学院', '新材料学院', '汇丰商学院', '国际法学院', '人文社会科学学院']), 't5': ('指导教师职称/职务', []), 'u5': ('指导教师电话', []), 'v5': ('指导教师电子邮箱', [])}
-
-    excel_got="tests/for_fuker.func2/test_set_dropdown.xlsx"
-    Xio=Excel_IO()
-    xlsx_wb=px.load_workbook(excel_got)
-    Xattr=Excel_attribute(xlsx_wb)
-    Xattr.set_dropdowns(selected_field_rules)
-    print(Xattr.get_dropdowns())
-    xlsx_wb.save("tests/for_fuker.func2/output2-test_set_dropdown.xlsx")
-    #"""
+    

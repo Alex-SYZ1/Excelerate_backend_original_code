@@ -1,4 +1,10 @@
-import difflib,re,random
+import difflib,re,random,os
+def get_filepath_variables(excel_got):
+    """返回excel_got的folder_path,file_basename,file_extension,file_name的键值对字典"""
+    folder_path=os.path.dirname(excel_got)
+    file_basename,file_extension=os.path.splitext(os.path.basename(excel_got))
+    file_name=os.path.basename(excel_got)
+    return {name_:variable_ for name_,variable_ in zip("folder_path file_basename file_extension file_name".split(),[folder_path,file_basename,file_extension,file_name])}
 def have_common_characters(str1, str2):
     return bool(set(str1) & set(str2))
 def best_match(target, options):
