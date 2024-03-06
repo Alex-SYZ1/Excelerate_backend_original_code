@@ -75,7 +75,10 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         # 返回用户可选规则字典
         
         # 获取文件并转化
+        if not self.file_stream:raise TypeError
         excel_got=self.file_stream
+        self.file_stream.seek(0)
+        
         self.excel_wb,self.excel_ws=self.excel_wb,self.excel_ws=self.Xio.load_workbook_from_stream(excel_got)
         
         # 读取对象并获取属性
@@ -92,6 +95,11 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                      [self.Sheet_dropdowns[col_index[0]] if col_index[0] in self.Sheet_dropdowns else [],
                       self.predefined_rules[StringPRO.best_match(name,list(self.predefined_rules.keys()))]
                       ])) for col_index,(cell,name) in fields_index_col_to_cell_name.items() } 
+        Field_rules={col_index: 
+            [name,dict(zip(["对应列下拉列表规则","程序预定义规则"],
+                     [self.Sheet_dropdowns[col_index[0]] if col_index[0] in self.Sheet_dropdowns else [],
+                      self.predefined_rules[StringPRO.best_match(name,list(self.predefined_rules.keys()))]
+                      ]))] for col_index,(cell,name) in fields_index_col_to_cell_name.items() } 
             
         return Field_rules
 
@@ -183,8 +191,8 @@ if "__main__" == __name__:
     #第一个方法
     Fuker.get_file_stream(excel_got,file_name)
     #第二个方法
-    Fuker.generate_user_rule_dict(fields_index_col)
-    
+    print(Fuker.generate_user_rule_dict(fields_index_col))
+    #if input()=="1":raise #测试用
     #第三个方法，得到的字典print出，得到的文件保存到new_file_save_path
     output_rule_dict,output_excel=Fuker.create_final_rules_and_examples(selected_field_rules)
     print(output_rule_dict)
