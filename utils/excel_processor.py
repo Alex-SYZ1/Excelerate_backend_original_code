@@ -12,7 +12,7 @@ class Excel_IO:
         self.FORMATS = {'xls': 56,    'xlsx': 51}
         self.temp_path="tmp/"
     def read_excel_file(self, excel_path, sheet_index=0):
-        """openpyxl读取某路径的excel文件"""
+        """openpyxl读取某路径的excel文件,有点害人,返回的是wb和ws的tuple,略微合理。"""
         try:
             excel_wb = px.load_workbook(excel_path, data_only=True)
             excel_ws = excel_wb.worksheets[sheet_index]
@@ -23,7 +23,7 @@ class Excel_IO:
             return None
 
     def load_workbook_from_stream(self,excel_stream, sheet_index=0):
-        """openpyxl读取某数据流的excel文件"""
+        """openpyxl读取某数据流的excel文件,有点害人,返回的是wb和ws的tuple,略微合理。"""
         if 1:#try:
             # 读取流中的内容为二进制数据
             excel_data = excel_stream.read()
@@ -45,7 +45,6 @@ class Excel_IO:
         try:
             # 创建一个BytesIO对象来保存Excel文件
             excel_stream = io.BytesIO()
-            
             # 将workbook保存到这个BytesIO流中
             excel_wb.save(excel_stream)
 
@@ -215,7 +214,7 @@ class Excel_attribute:
 
         # 含有当前工作表的所有有效性验证的对象
         validations = self.excel_ws.data_validations.dataValidation
-        print(validations)
+        #print(validations)
         for validation in validations:
             
             #当前有效性涉及区域
@@ -294,7 +293,7 @@ class Excel_attribute:
         """
         设置规则和样例到指定单元格，并且如果规则过长，只使用规则列表的前n项，
         使得len(",".join(rule_list[:n]))<20，并在后面加上"等{len(rule_list)}个选项"。
-        同时设置单元格字体为红色。
+        同时设置单元格字体为红色。#进一步：调整样式；富文本？
         """
         # 计算合适的规则字符串长度
         rule_display = ",".join(rule_list)
@@ -355,14 +354,16 @@ class Excel_attribute:
 if 1:# 一些简单的格式转换和读取           
     def convert_to_json_stream(data):
         """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
-        json_string = json.dumps(data)
+        json_string = json.dumps(data, indent=4, ensure_ascii=False)
         
         # 创建一个StringIO对象，它提供了文件类的接口
         json_stream = io.StringIO(json_string)
         
         # 返回数据流
         return json_stream
-
+    def save_py_objection_to_json(py_ob,path):
+        with open(path, 'w', encoding='utf-8') as json_file:
+            json.dump(py_ob, json_file, indent=4, ensure_ascii=False)
     def read_from_json_stream(json_stream):
         """从JSON数据流中读取数据并转换为Python数据类型，后端不再使用。"""
         # 重置流的读取位置到起始处

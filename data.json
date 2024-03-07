@@ -1,0 +1,88 @@
+测试对xls文件的第一、二、三、四个方法，并将产生的四种模式的Excel文件和规则文件，保存到tests/for_fuker.allprocess_xls/saving_all_modes_test文件夹
+[]
+[<openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [D7:D1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"理工农医类,社会调查报告和人文社科类,发明创造科技制作类"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [E7:E1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"哲学,经济学,法学,教育学,文学,历史学,理学,工学,农学,医学,军事学,管理学,艺术学"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [F7:F1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$A$2:$A$112", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [H7:H1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"是,否"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [I7:I1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [J7:J1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"北京,天津,上海,重庆,河北,山西,辽宁,吉林,黑龙江,江苏,浙江,安徽,福建,江西,山东,河
+南,湖北,湖南,广东,海南,四川,贵州,云南,陕西,甘肃,青海,台湾,内蒙古,广西,西藏,宁夏,新疆,香港,澳门,其他"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [L7:L1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$B$2:$B$74", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [R7:R1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [S7:S1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$C$2:$C$74", formula2=None]
+*************************我来修改下拉列表了！！！
+[<openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [D7:D1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"理工农医类,社会调查报告和人文社科类,发明创造科技制作类"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [E7:E1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"哲学,经济学,法学,教育学,文学,历史学,理学,工学,农学,医学,军事学,管理学,艺术学"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [F7:F1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$A$2:$A$112", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [H7:H1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"是,否"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [I7:I1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [J7:J1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"北京,天津,上海,重庆,河北,山西,辽宁,吉林,黑龙江,江苏,浙江,安徽,福建,江西,山东,河
+南,湖北,湖南,广东,海南,四川,贵州,云南,陕西,甘肃,青海,台湾,内蒙古,广西,西藏,宁夏,新疆,香港,澳门,其他"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [L7:L1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$B$2:$B$74", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [R7:R1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [S7:S1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$C$2:$C$74", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [D6:D1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"理工农医类,社会调查报告和人文社科类,发明创造科技制作类"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [E6:E1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"哲学,经济学,法学,教育学,文学,历史学,理学,工学,农学,医学,军事学,管理学,艺术学"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [F6:F1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$D$2:$D$112", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [H6:H1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"是,否"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [I6:I1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [J6:J1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"北京,天津,上海,重庆,河北,山西,辽宁,吉林,黑龙江,江苏,浙江,安徽,福建,江西,山东,河
+南,湖北,湖南,广东,海南,四川,贵州,云南,陕西,甘肃,青海,台湾,内蒙古,广西,西藏,宁夏,新疆,香港,澳门,其他"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [L6:L1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$E$2:$E$74", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [R6:R1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [S6:S1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$F$2:$F$74", formula2=None]
+
+D:\SYZ_folder\ChallengeCup-Excelerate\A_have_ignored_\Excelerate_backend_original_code> d: && cd d:\SYZ_folder\ChallengeCup-Excelerate\A_have_ignored_\Excelerate_backend_original_code && cmd /C "C:\Users\26352\anaconda3\python.exe c:\Users\26352\.vscode\extensions\ms-python.python-2023.14.0\pythonFiles\lib\python\debugpy\adapter/../..\debugpy\launcher 65132 -- D:\SYZ_folder\ChallengeCup-Excelerate\A_have_ignored_\Excelerate_backend_original_code\services\file_rule_maker.py "
+测试对xls文件的第一、二、三、四个方法，并将产生的四种模式的Excel文件和规则文件，保存到tests/for_fuker.allprocess_xls/saving_all_modes_test文件夹
+[]
+[]
+*************************我来修改下拉列表了！！！
+[<openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [D6:D1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"理工农医类,社会调查报告和人文社科类,发明创造科技制作类"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [E6:E1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"哲学,经济学,法学,教育学,文学,历史学,理学,工学,农学,医学,军事学,管理学,艺术学"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [F6:F1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$D$2:$D$112", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [H6:H1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"是,否"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [I6:I1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [J6:J1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"北京,天津,上海,重庆,河北,山西,辽宁,吉林,黑龙江,江苏,浙江,安徽,福建,江西,山东,河
+南,湖北,湖南,广东,海南,四川,贵州,云南,陕西,甘肃,青海,台湾,内蒙古,广西,西藏,宁夏,新疆,香港,澳门,其他"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [L6:L1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$E$2:$E$74", formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [R6:R1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1='"男,女"', formula2=None, <openpyxl.worksheet.datavalidation.DataValidation object>
+Parameters:
+sqref=<MultiCellRange [S6:S1048576]>, showDropDown=False, showInputMessage=False, showErrorMessage=True, allowBlank=False, errorTitle=None, error=None, promptTitle=None, prompt=None, type='list', errorStyle=None, imeMode=None, operator=None, formula1="'sheet_for_DataValidate'!$F$2:$F$74", formula2=None]

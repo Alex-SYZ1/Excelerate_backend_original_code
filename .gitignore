@@ -9,3 +9,5 @@ resources
 *ipynb
 
 .vscode
+
+*_init__.py
