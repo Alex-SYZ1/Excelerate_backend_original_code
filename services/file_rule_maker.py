@@ -1,7 +1,8 @@
 import os,sys,io
 import openpyxl as px
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter,coordinate_to_tuple
+
 
 """用于导入项目中不在同一文件夹的库"""
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,6 +39,8 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                 file_name (str): 
                     content:该Excel文件的文件名
                     format :"test.xls(x)"
+            Returns:
+                xlsx_excel (io.BytesIO):后端读取后又输出(若需转化，则转化为xlsx)的xlsx文件数据流
         """
         self.file_name=file_name
         self.file_stream=excel_got
@@ -99,7 +102,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
 
 
     def create_final_rules_and_examples(self, 
-                                selected_field_rules:dict) -> io.StringIO:
+                                selected_field_rules:dict) -> (dict,"io.BytesIO in dict"):
         """
             从数据流接收  ：字段名与规则对应的字典
             输出到数据流  ：字段名与最终规则和样例对应的字典，含有最终规则和样例行、最终规则下拉列表的Excel文件
@@ -112,11 +115,22 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                             "字段位置3":同上...}
                     
             Returns to stream:
-                final_rules_and_examples (dict):
-                    content:字段名与最终规则和样例对应的字典
-                    format :{"字段位置1":["字段名1",["最终规则正则表达式","最终规则样例"]]
-                            "字段位置2":...同上}
-                simulate_rule_excels (excel_file):
+                self.file_rule_dict (dict):
+                    content:各个模式下，数据起始位置与字段名、最终规则和样例对应的字典
+                    format :{"0-0":{"数据起始位置1":["字段名1",["最终规则正则表达式","最终规则样例"]]
+                                    "数据起始位置2":...同上
+                                    },
+                             "1-1":{"数据起始位置1":["字段名1",["最终规则正则表达式","最终规则样例"]]
+                                    "数据起始位置2":...同上
+                                    },
+                             "1-2":{"数据起始位置1":["字段名1",["最终规则正则表达式","最终规则样例"]]
+                                    "数据起始位置2":...同上
+                                    },
+                             "2-2":{"数据起始位置1":["字段名1",["最终规则正则表达式","最终规则样例"]]
+                                    "数据起始位置2":...同上
+                                    },
+                            }
+                self.final_excel_by_mode (excel_file):
                     content:【最终规则样例行】与【最终规则下拉列表】自选含有与否的不同模式的Excel文件数据流存储在字典
                     format :{"0-0":io.BytesIO,                                    #(表示不对文件内容做修改)
                             "1-1":io.BytesIO,                                     #(表示在文件的字段下一行添加规则&样例行)
@@ -137,6 +151,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                                                      StringPRO.generate_strict_regex_and_example(rule_list)]
             example=final_rules_and_examples[one_index_col][-1][-1]
             self.Xattr.set_validation_rules_and_example(one_index_col,field_name,rule_list,example)
+        field_row=coordinate_to_tuple(one_index_col)[1]
         stream_mode_excel_to_dict("1-1")
         
         #设置下拉列表，为2-2
@@ -151,20 +166,28 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         self.Xattr.set_dropdowns(selected_field_rules, sep_row=1)
         stream_mode_excel_to_dict("1-2")
         
-        self.file_rule_dict=final_rules_and_examples
-        simulate_rule_excels=self.final_excel_by_mode
+        # 将各个模式的规则dict写入self.file_rule_dict
+        self.file_rule_dict={mode:
+                                    {"".join([(str(int(i)+data_sep_row) if type(i)==int else i)
+                                        for i in StringPRO.coordinate_from_string(rule_dict_key)
+                                         ])
+                                        :rule_dict_value
+                                            for rule_dict_key,rule_dict_value in (final_rules_and_examples.items()) 
+                                    }
+                            for mode,data_sep_row in zip(["0-0","1-1","1-2","2-2"],[1,2,1,2])
+                            }#每一种模式，一种规则文件，包含了数据起始行
         
-        return final_rules_and_examples,simulate_rule_excels
+        return self.file_rule_dict,self.final_excel_by_mode
     
     def save_final_files(self, 
-                         excel_saving_mode:str,
-                         files_saving_path:str):#进一步，建议前端在这一步，为用户提供打开文件位置的快捷键
+                         saving_mode:str,
+                         files_saving_path:str) -> str:#进一步，建议前端在这一步，为用户提供打开文件位置的快捷键
         """
             从数据流接收  ：excel文件保存模式，excel文件和规则文件保存路径
             本地操作      ：保存excel文件到指定目录，规则文件也自动保存在此目录#进一步：考虑 excel文件和规则文件 打包到一起的zip 到指定目录
             输出到数据流  ：文件保存成功提示
             Parameters from stream:
-                excel_saving_mode (str): 
+                saving_mode (str): 
                     content:excel文件保存模式,值为数字+“-”+数字
                     format :"0-0";(表示不对文件内容做修改)
                             "1-1";(表示在文件的字段下一行添加规则&样例行)
@@ -177,9 +200,12 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
                     format :"1"/"0"
         """
         try:
-            excel_stream=self.final_excel_by_mode[excel_saving_mode]
+            excel_stream=self.final_excel_by_mode[saving_mode]
             excel_wb=self.Xio.load_workbook_from_stream(excel_stream)[0]
-            XPRO.save_py_objection_to_json(self.file_rule_dict,os.path.join(os.path.dirname(files_saving_path),"file_rule.json"))
+            XPRO.save_py_objection_to_json(self.file_rule_dict[saving_mode],os.path.join(os.path.dirname(files_saving_path),f"file_rule_of{saving_mode}.json"))
+            for i,j in(self.file_rule_dict.items()):
+                print(i,j,sep="\n")
+            #input()
             self.Xio.save_excel(excel_wb,excel_path=files_saving_path)
             saving_flag="1"
         except:saving_flag="0"
@@ -228,5 +254,4 @@ if "__main__" == __name__:
         new_file_name="allprocess_xls_"+i+"_"+file_basename+".xlsx"
         new_file_save_path=os.path.join(excel_got_variables["folder_path"],"saving_all_modes_test",new_file_name)
         print(Fuker.save_final_files(i,new_file_save_path))
-    
     

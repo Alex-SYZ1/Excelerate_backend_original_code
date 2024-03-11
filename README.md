@@ -143,6 +143,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
   + 并在main函数中将三个方法详细地解释、连贯地运行   
   事实上剩下的save_final_rules需要的工作较少了，目前已经基本涉及了其功能实现，后续视前端进度再完善。
   + 在README文件中，对xls2xlsx库、Excel文件格式转化的问题进行了探讨，并初步设想了convert_excel_format在程序中的应用方式。
++ 2024.3.7
+  + 基本实现了file_rule_maker,顺畅运行其下的四个方法
++ 2024.3.10
+  + 更新规则dict 含数据起始行
++ 2024.3.11
+  + file_validator文件的读取、检验、保存三个方法均实现并顺畅运行，辅以示例、注释
 ## 联系方式
 |姓名|电话|微信号|邮箱|
 |---|---|---|---|

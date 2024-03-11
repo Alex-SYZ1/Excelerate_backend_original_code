@@ -132,13 +132,16 @@ class Excel_attribute:
         px_max_col = self.excel_ws.max_column
         value_max_row = 0
         value_max_col = 0
+        last_cell=""
         for row in self.excel_ws.iter_rows():
             for cell in row:
-                if cell.value is not None:
-                    value_max_row = max(value_max_row, cell.row)
-                    value_max_col = max(value_max_col, cell.column)
-        return {"max_row":{px_max_col,value_max_col},
-                "max_col":{px_max_row,value_max_row}}
+                if cell.value:
+                    if "".join(str(cell.value).split()):
+                        last_cell=cell
+                        value_max_row = max(value_max_row, cell.row)
+                        value_max_col = max(value_max_col, cell.column)
+        return {"max_col":{px_max_col,value_max_col},
+                "max_row":{px_max_row,value_max_row}}
 
     def modify_cell_style(self, cell, font=None, border=None, fill=None, 
                           number_format=None, protection=None, 
@@ -346,7 +349,7 @@ class Excel_attribute:
         cell.alignment = Alignment(wrapText=True)"""
 
         cell_value = f"·规则：{rule_display}\n·样例：{example}"
-        cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]
+        cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]#进一步：如何确认规则样例行就在字段的下一行？请调查核实。或者说，字段行下一行如何确保没有内容？
         cell.value = cell_value
         cell.font = Font(color="FF0000",size=7)  # 红色字体
         cell.alignment = Alignment(wrapText=True)  # 开启自动换行"""

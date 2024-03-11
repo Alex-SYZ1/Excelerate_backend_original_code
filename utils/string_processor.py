@@ -35,6 +35,19 @@ def generate_strict_regex_and_example(input_list):
 def match_with_regex(regex, string_to_test):
     return re.match(regex, string_to_test) is not None
 
+def coordinate_from_string(coord_string):
+    """Convert a coordinate string like 'B12' to a tuple ('B', 12)"""
+    COORD_RE = re.compile(r'^[$]?([A-Za-z]{1,3})[$]?(\d+)$')
+    match = COORD_RE.match(coord_string)
+    if not match:
+        msg = f"Invalid cell coordinates ({coord_string})"
+        raise CellCoordinatesException(msg)
+    column, row = match.groups()
+    row = int(row)
+    if not row:
+        msg = f"There is no row 0 ({coord_string})"
+        raise CellCoordinatesException(msg)
+    return column, row
 
 """# 示例使用match
 options_list = ["填写", "日", "院系日名称", "院系"]
