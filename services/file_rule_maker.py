@@ -1,4 +1,4 @@
-import os,sys,io
+import os,sys,io,random
 import openpyxl as px
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.utils import get_column_letter,coordinate_to_tuple
@@ -179,41 +179,10 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         
         return self.file_rule_dict,self.final_excel_by_mode
     
-    def save_final_files(self, 
-                         saving_mode:str,
-                         files_saving_path:str) -> str:#进一步，建议前端在这一步，为用户提供打开文件位置的快捷键
-        """
-            从数据流接收  ：excel文件保存模式，excel文件和规则文件保存路径
-            本地操作      ：保存excel文件到指定目录，规则文件也自动保存在此目录#进一步：考虑 excel文件和规则文件 打包到一起的zip 到指定目录
-            输出到数据流  ：文件保存成功提示
-            Parameters from stream:
-                saving_mode (str): 
-                    content:excel文件保存模式,值为数字+“-”+数字
-                    format :"0-0";(表示不对文件内容做修改)
-                            "1-1";(表示在文件的字段下一行添加规则&样例行)
-                            "1-2";(表示在文件除了表头的位置，均根据规则添加下拉列表)
-                            "2-2";(表示同时添加规则&样例行和下拉列表)
 
-            Returns to stream:
-                saving_flag (str):
-                    content:是否完成保存
-                    format :"1"/"0"
-        """
-        try:
-            excel_stream=self.final_excel_by_mode[saving_mode]
-            excel_wb=self.Xio.load_workbook_from_stream(excel_stream)[0]
-            XPRO.save_py_objection_to_json(self.file_rule_dict[saving_mode],os.path.join(os.path.dirname(files_saving_path),f"file_rule_of{saving_mode}.json"))
-            for i,j in(self.file_rule_dict.items()):
-                print(i,j,sep="\n")
-            #input()
-            self.Xio.save_excel(excel_wb,excel_path=files_saving_path)
-            saving_flag="1"
-        except:saving_flag="0"
-        return saving_flag
-    
 if "__main__" == __name__:
     
-    print("测试对xls文件的第一、二、三、四个方法，并将产生的四种模式的Excel文件和规则文件，保存到tests/for_fuker.allprocess_xls/saving_all_modes_test文件夹")
+    print("测试对xls文件的第一、二、三个方法，并将产生的四种模式的Excel文件和规则文件，保存到tests/for_fuker.allprocess_xls/saving_all_modes_test文件夹")
     #制作文件规则类的实例   
     Fuker=FileRuleMaker()
 
@@ -246,12 +215,15 @@ if "__main__" == __name__:
     #第三个方法，得到的字典、得到的文件都存在属性并作为方法返回值
     output_rule_dict,output_excel_dict=Fuker.create_final_rules_and_examples(selected_field_rules)
     
-    #第四个方法，此处将四种模式的Excel文件都保存了，文件名中含有其模式;规则文件前后覆盖地保存了四次，故最终只有一个规则json
-    for i in """0-0
-1-1
-1-2
-2-2""".split("\n"):
-        new_file_name="allprocess_xls_"+i+"_"+file_basename+".xlsx"
-        new_file_save_path=os.path.join(excel_got_variables["folder_path"],"saving_all_modes_test",new_file_name)
-        print(Fuker.save_final_files(i,new_file_save_path))
+    #删除了第四个方法（后端保存文件改未前端保存文件），故模拟前端保存了任意一种模式的excel文件、json文件
+    file_modes=['0-0', '1-1', '1-2', '2-2']
     
+    ##选择文件
+    choosed_file_mode=random.choice(file_modes)
+    new_file_name="allprocess_xls_"+choosed_file_mode+"_"+file_basename+".xlsx"
+    new_file_save_path=os.path.join(excel_got_variables["folder_path"],"saving_all_modes_test",new_file_name)
+    json_file_path=os.path.join(excel_got_variables["folder_path"],"saving_all_modes_test","file_rule_of"+choosed_file_mode+".json")
+    choosed_workbook=Fuker.Xio.load_workbook_from_stream(Fuker.final_excel_by_mode[choosed_file_mode])[0]
+    
+    Fuker.Xio.save_excel(choosed_workbook,new_file_save_path)
+    XPRO.save_py_objection_to_json(Fuker.file_rule_dict[choosed_file_mode],json_file_path)

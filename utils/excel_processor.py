@@ -15,6 +15,9 @@ class Excel_IO:
         """openpyxl读取某路径的excel文件,有点害人,返回的是wb和ws的tuple,略微合理。"""
         try:
             excel_wb = px.load_workbook(excel_path, data_only=True)
+            # 判断是否存在名为"Evaaluation Version"的工作表
+            if "Evaluation Version" in excel_wb.sheetnames:
+                sheet_index+=1
             excel_ws = excel_wb.worksheets[sheet_index]
             return (excel_wb,excel_ws)
         except IOError as e:
@@ -354,6 +357,29 @@ class Excel_attribute:
         cell.font = Font(color="FF0000",size=7)  # 红色字体
         cell.alignment = Alignment(wrapText=True)  # 开启自动换行"""
 
+# for concat：
+class Df_:
+    def __init__(self, file_path_list): 
+        """"""
+        self.data_rows={}#各表数据行数
+    def compare_field_data(self, field_names, template_names): 
+        """比较字段名与模板。输出"""
+    def clean_data(self):
+        """清洗的任务，如去除空行、修正数据格式"""
+    def merge_excels(self): 
+        """合并Excel文件。"""
+class Style_template:
+    """此类负责存储和应用样式模板。"""
+    def __init__(self, workbook): 
+        """初始化方法，接收一个openpyxl workbook对象。将工作表作为属性"""
+    def get_style_and_location(self):
+        """从模板获取样式，保存为类属性"""
+    def apply_to_cell(self, cell): 
+        """应用样式到单个单元格。"""
+    def apply_to_header(self): 
+        """应用样式到表头。"""
+    def apply_to_data(self): 
+        """应用样式到数据行。"""
 if 1:# 一些简单的格式转换和读取           
     def convert_to_json_stream(data):
         """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
