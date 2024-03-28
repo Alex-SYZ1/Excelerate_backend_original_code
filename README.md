@@ -56,7 +56,7 @@
     Xio=Excel_IO()
     xlsx_stream=io.BytesIO()
     excel_got=r"tests\for_xls2xlsx\xlsx_file.xlsx"
-    with open(excel_got, 'rb') as file:
+    with open(excel_got, rb) as file:
         xlsx_stream.write(file.read())
     # 重置流的位置到开始处，这样就可以从头读取
     xlsx_stream.seek(0)
@@ -155,3 +155,5 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 |姓名|电话|微信号|邮箱|
 |---|---|---|---|
 |税远志|18511682594|Avid825|2100016640@stu.pku.edu.cn||
+
+

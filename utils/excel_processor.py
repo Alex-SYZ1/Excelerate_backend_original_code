@@ -1,10 +1,17 @@
 import openpyxl as px
-import io,json,re,os,warnings,shutil
+from copy import copy,deepcopy
+import io,json,re,os,warnings,shutil,sys
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.utils import range_boundaries
+from openpyxl.utils import range_boundaries, get_column_letter
 import win32com.client as win32
 warnings.filterwarnings("ignore", category=UserWarning)
+
+"""用于导入项目中不在同一文件夹的库"""
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+import utils.string_processor as StringPRO
 
 class Excel_IO:
     def __init__(self):
@@ -61,7 +68,7 @@ class Excel_IO:
             return None
 
     def convert_excel_format(self,input_bytes, src_format, dst_format,save_dst=True):
-        """根据参数将数据流中的excel格式进行转化，并输出为数据流,默认在temp文件夹中产生的临时文件"""
+        """根据参数将数据流中的excel格式进行转化，并输出为数据流,默认在tmp文件夹中产生的临时文件"""
         
         # 清理之前的临时文件
         clear_directory(self.temp_path)
@@ -121,10 +128,25 @@ class Excel_attribute:
             self.excel_ws = excel_ws if excel_ws is not None else excel_wb.worksheets[0]
     
     def get_some_axis_cells(self,index,value_only=True):
-        """获取某一行/列的单元格，依据参数返回单元格对象或值的list"""
+        """获取某一行/列的单元格，依据参数返回单元格对象或值的list,字母和数字分别指代列和行"""
+        
         transform_cell=lambda cell:cell.value if value_only==True else cell
-        excel_field=[transform_cell(cell) for cell in self.excel_ws[index] if cell.value]
+        excel_field=[transform_cell(cell) for cell in self.excel_ws[index]]
         return excel_field
+    def get_range_cells_dict(self, min_col, min_row, max_col, max_row, value_only=True):
+        """获取指定区域内的单元格，返回一个字典，其中键是单元格的位置，值是单元格的内容或对象"""
+        transform_cell = lambda cell: cell.value if value_only else cell
+        cells_dict = {}
+        for row in self.excel_ws.iter_rows(min_col=min_col, 
+                                        min_row=min_row, 
+                                        max_col=max_col, 
+                                        max_row=max_row):
+            for cell in row:
+                cell_coordinate = cell.coordinate
+                cells_dict[cell_coordinate] = transform_cell(cell)
+        return cells_dict
+
+
     
     def get_max_row_col(self):
         """worksheet提供的属性来获取最大行列数问题：目前发现单元格有颜色填充、字色等也会被视为有内容的单元格；
@@ -145,29 +167,34 @@ class Excel_attribute:
                         value_max_col = max(value_max_col, cell.column)
         return {"max_col":{px_max_col,value_max_col},
                 "max_row":{px_max_row,value_max_row}}
-
-    def modify_cell_style(self, cell, font=None, border=None, fill=None, 
-                          number_format=None, protection=None, 
-                          hyperlink=None, alignment=None):
-        """根据对象性参数修改某一单元格的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等"""
+  
+    def modify_cell_style(self, cell, style_dict,not_modify_attr=[]):
+        """使用字典参数来修改某一单元格的样式属性，可自选不修改的属性
+            ['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
         # Check if cell is a string reference or a Cell object
         if isinstance(cell, str):
             cell = self.excel_ws[cell]
-            
-        # Apply styles as provided
-        # Create a dictionary with attribute names and the values provided
-        style_attributes = {
-            'font': font,'border': border,'alignment': alignment,
-            'fill': fill,'number_format': number_format,
-            'protection': protection,'hyperlink': hyperlink }
+        # Define all possible attributes that can be modified
+        possible_attributes = [
+            'font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink' ]
+        if not_modify_attr:
+            possible_attributes = [attr for attr  in possible_attributes if attr not in not_modify_attr]
+        
+        # copy value seperately
+        if "value" not in not_modify_attr:
+            self.excel_ws.cell(row=cell.row,column=cell.column,value=style_dict["value"])
+        # Iterate over possible attributes and update if provided in style_dict
+        for attr_name in possible_attributes:
+            if attr_name in style_dict:
+                setattr(cell, attr_name, style_dict[attr_name])
 
-        # Apply styles as provided
-        for attr_name, attr_value in style_attributes.items():
-            if attr_value is not None:
-                setattr(cell, attr_name, attr_value)  # Set attribute by name
-    
-    def modify_CertainRange_style(self, cell_range, **style_kwargs):
-        """根据对象性参数修改某一单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等"""
+
+    def modify_CertainRange_style(self, cell_range, style_dict, not_modify_attr=[]):
+        """根据字典参数修改某一单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等,
+        可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
         # Convert cell range to actual range
         min_col, min_row, max_col, max_row = range_boundaries(cell_range)
         
@@ -175,17 +202,92 @@ class Excel_attribute:
         for row in range(min_row, max_row + 1):
             for col in range(min_col, max_col + 1):
                 cell = self.excel_ws.cell(row=row, column=col)
-                self.modify_cell_style(cell, **style_kwargs)
+                self.modify_cell_style(cell, style_dict, not_modify_attr = not_modify_attr )
                 
-    def modify_MutipleRange_style(self, cell_range_list, **style_kwargs):
-        """根据对象性参数修改某一多分布单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等"""
-        if type(cell_range_list)== str:cell_range_list=[cell_range_list]
-        for cell_range in cell_range_list:
-            self.modify_CertainRange_style(cell_range,**style_kwargs)
+    def modify_MutipleRange_style(self, cell_ranges_str, style_dict, not_modify_attr=[]):
+        """根据字典参数修改某一多分布单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等，
+        可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
+        cell_ranges_list=[i.strip() for i in cell_ranges_str.split(",")]
+        for cell_range in cell_ranges_list:
+            self.modify_CertainRange_style(cell_range, style_dict, not_modify_attr= not_modify_attr)
 
+    def get_cell_attributes(self, cell_reference):
+        """获取单元格的属性字典，包括value和hyperlink"""
+        cell = self.excel_ws[cell_reference]
+        attributes = {
+            'font': copy(cell.font),
+            'border': copy(cell.border),
+            'fill': copy(cell.fill),
+            'number_format': cell.number_format,
+            'protection': copy(cell.protection),
+            'alignment': copy(cell.alignment),
+            'hyperlink': cell.hyperlink,
+            'value': cell.value
+        }
+        # 使用deepcopy可以确保对象是完全独立的副本
+        return {cell_reference: deepcopy(attributes)}
     
+    def get_row_attributes(self, row_number):
+        """遍历获取一行所有单元格的属性字典"""
+        row_attributes = {}
+        for cell in self.excel_ws[row_number]:
+            cell_reference = cell.coordinate
+            cell_attributes = self.get_cell_attributes(cell_reference)
+            row_attributes.update(cell_attributes)
+        return row_attributes
+    
+    def get_merge_ranges_str(self):
+        merge_ranges_list = []
+        for merged_cell_range in shopier.source_ws_attr.excel_ws.merged_cells.ranges:
+            merge_ranges_list.append(merged_cell_range.coord)
+        return merge_ranges_list
+    
+    
+    def clear_cell_attributes(self, cell):
+        """完全清空单元格的任何属性，包括hyperlink"""
+        if type(cell) == str:cell=self.excel_ws[cell]
+        cell.font = Font()
+        cell.border = Border()
+        cell.fill = PatternFill(fill_type=None)
+        cell.number_format = 'General'
+        cell.protection = Protection()
+        cell.alignment = Alignment()
+        cell.value = None
+        cell.hyperlink = None
+        
+
+    '''def apply_cell_attributes(self, cell_reference, attributes):
+        """将属性字典应用到指定单元格"""
+        cell = self.excel_ws[cell_reference]
+        cell.font = attributes.get('font', Font())
+        cell.border = attributes.get('border', Border())
+        cell.fill = attributes.get('fill', Fill())
+        cell.number_format = attributes.get('number_format', 'General')
+        cell.protection = attributes.get('protection', Protection())
+        cell.alignment = attributes.get('alignment', Alignment())
+        if 'hyperlink' in attributes and attributes['hyperlink'] is not None:
+            cell.hyperlink = copy(attributes['hyperlink'])
+        cell.value = attributes.get('value')'''
+
+    # 获取特定工作表特定行的行高
+    def get_row_height(self, row_number):
+        return self.excel_ws.row_dimensions[row_number].height
+
+    # 获取特定工作表特定列的列宽
+    def get_column_width(self, column_number):
+        return self.excel_ws.column_dimensions[get_column_letter(column_number)].width
+
+    # 将特定工作表特定行宽设置为特定值
+    def set_row_height(self, row_number, height):
+        self.excel_ws.row_dimensions[row_number].height = height
+
+    # 将特定工作表特定列宽设为特定值
+    def set_column_width(self, column_number, width):
+        self.excel_ws.column_dimensions[get_column_letter(column_number)].width = width
+        
     def get_dropdowns(self):
-        """获取工作表内的各列的下拉列表字典，同一行多种下拉列表的以list组织"""
+        """获取工作表内的各列的下拉列表字典，同一列多种下拉列表的以list组织"""
         def get_dropdowns_values(validation):
             result=validation.formula1
             
@@ -226,7 +328,7 @@ class Excel_attribute:
             #当前有效性涉及区域
             cell=str(validation.sqref)
             
-            #目前的方式，仅匹配下拉列表选择所以值的。进一步：考虑介于等多种方式
+            #目前的方式，仅匹配下拉列表选择所有值的。进一步：考虑介于等多种方式
             result=(get_dropdowns_values(validation))
 
             #如果是多列的下拉列表相同，分别进行检验
@@ -357,6 +459,119 @@ class Excel_attribute:
         cell.font = Font(color="FF0000",size=7)  # 红色字体
         cell.alignment = Alignment(wrapText=True)  # 开启自动换行"""
 
+# 实现工作表之间的复制
+class SheetCopier:
+    def __init__(self,source_wb,target_wb):
+        """先后传入源工作簿、目标工作簿,目标为None则自动创建新工作工作簿"""
+        
+        self.source_ws_attr=Excel_attribute(source_wb)
+        self.target_ws_attr=Excel_attribute(target_wb)
+    
+    def copy_some_row_attr(self, 
+                      source_row, target_row, 
+                      not_modify_attr=[],
+                      max_s_col=16384, 
+                      min_s_col=1, min_t_col=1):#进一步：复制下拉列表
+        """复制源工作表指定行单元格属性到目标工作表指定行，可自选不复制的属性、源起始列、源终止列、目标起始列
+        属性包括['font', 'border', 'fill', 'number_format','protection', 'alignment', 'hyperlink', 'value']"""
+        is_valid_col=lambda var,max_ : var > 0 and var <=max_
+        
+        if not (is_valid_col(min_s_col,max_s_col) and is_valid_col(min_t_col,16384) and is_valid_col(max_s_col,16384)) or min_s_col> max_s_col:
+            raise
+        
+        # source_excel_ws=self.source_ws_attr
+        source_row_attr=self.source_ws_attr.get_row_attributes(source_row)
+        
+        max_s_col=max(self.source_ws_attr.get_max_row_col()["max_col"]) if max_s_col==16384 else max_s_col
+        s_cell_list=[f"{get_column_letter(s_col)}{source_row}" for s_col in range(min_s_col,max_s_col+1)]
+        t_cell_list=[f"{StringPRO.coordinate_from_string(s_cell)[0]}{target_row}" for s_cell in s_cell_list]
+        s_t_cell_map=zip(s_cell_list,t_cell_list)
+        
+        # Copying merged cells
+        # for merged_cell_range in source_sheet.merged_cells.ranges:
+        #     if merged_cell_range.min_row <= source_row <= merged_cell_range.max_row:
+        #         # Reconstruct merged cell coordinates for the target
+        #         target_merged_cell_range = f"{get_column_letter(merged_cell_range.min_col)}{target_row}:{get_column_letter(merged_cell_range.max_col)}{target_row}"
+        #         target_sheet.merge_cells(target_merged_cell_range)
+        
+        for s_cell,t_cell in s_t_cell_map:
+            self.target_ws_attr.modify_cell_style(t_cell,source_row_attr[s_cell],not_modify_attr=not_modify_attr)
+    # 旧版
+    # def copy_row_attr(self, source_row, target_row, max_col=None):
+    #     """Copy cell attributes and merged cells from source row to target row."""
+    #     source_sheet, target_sheet = self.source_ws_attr.excel_ws, self.target_ws_attr.excel_ws
+        
+    #     # Determine max_col if not provided
+    #     if max_col is None:
+    #         max_col = source_sheet.max_column
+        
+    #     # Copying merged cells
+    #     for merged_cell_range in source_sheet.merged_cells.ranges:
+    #         if merged_cell_range.min_row <= source_row <= merged_cell_range.max_row:
+    #             # Reconstruct merged cell coordinates for the target
+    #             target_merged_cell_range = f"{get_column_letter(merged_cell_range.min_col)}{target_row}:{get_column_letter(merged_cell_range.max_col)}{target_row}"
+    #             target_sheet.merge_cells(target_merged_cell_range)
+
+    #     # Copying cell attributes
+    #     for column in range(1, max_col + 1):
+    #         source_cell = source_sheet.cell(row=source_row, column=column)
+            
+    #         # First copy value
+    #         target_sheet.cell(row=target_row, column=column, value= copy(source_cell.value))
+    #         target_cell = target_sheet.cell(row=target_row, column=column)
+            
+    #         if source_cell.has_style:
+    #             target_cell._style = copy(source_cell._style)
+    #             target_cell.font = copy(source_cell.font)
+    #             target_cell.border = copy(source_cell.border)
+    #             target_cell.fill = copy(source_cell.fill)
+    #             target_cell.number_format = copy(source_cell.number_format)
+    #             target_cell.protection = copy(source_cell.protection)
+    #             target_cell.alignment = copy(source_cell.alignment)
+    #         if source_cell.hyperlink:
+    #             target_cell.hyperlink = copy(source_cell.hyperlink)
+    #         else:print(source_cell.value)
+
+    # 将源文件特定列数据验证复制到目标文件特定列，从特定行开始复制，若源列有多种下拉列表，以所需下拉列表选项独具的关键词为参数找到对应下拉列表 letter -> letter
+    def copy_some_col_dropdown(self,source_col,target_col,field_row,sep_row=1,dropdown_keyword=""):
+        source_dropdowns=self.source_ws_attr.get_dropdowns()
+        if len(source_dropdowns[source_col])>1 and len(dropdown_keyword)>0:
+            choice_suits_key=0
+            for dropdown_pattern in source_dropdowns[source_col]:
+                for dropdown_choice in dropdown_pattern:
+                    if dropdown_keyword in dropdown_choice:
+                        choice_suits_key=1;break
+            if choice_suits_key==0:raise KeyError
+        # 未提供下拉列表关键词，或该列只含一种下拉列表，均使用第1种下拉列表
+        else:
+            dropdown_choice=source_dropdowns[source_col][0]
+        target_dropdown={field_row:[target_col,dropdown_choice]}
+        self.target_ws_attr.set_dropdowns(target_dropdown)
+        
+    # 将源文件特定行高复制到目标文件特定行
+    def copy_some_row_height(self,source_row,target_row):
+        row_height=self.source_ws_attr.get_row_height(source_row)
+        self.target_ws_attr.set_row_height(target_row,row_height)
+        
+    # 将源工作表的某些列宽应用到目标工作表的相应列
+    def copy_some_col_widths(self, start_index, end_index):
+        """# 将列范围转换为列的数字表示形式
+        col_start, col_end = column_range.split(':')
+        start_index = column_index_from_string(col_start)
+        end_index = column_index_from_string(col_end)"""
+
+        # 遍历指定的列范围并复制宽度
+        for col in range(start_index, end_index + 1):
+            column_letter = get_column_letter(col)
+            width = self.source_ws_attr.get_column_width(col)
+            self.target_ws_attr.set_column_width(col,width)
+
+    # 复制源工作表的所有列宽到目标工作表
+    def copy_all_col_widths(self):
+        self.copy_some_col_widths(1,max(self.source_ws_attr.get_max_row_col()["max_col"]))
+        
+
+
 # for concat：
 class Df_:
     def __init__(self, file_path_list): 
@@ -380,7 +595,9 @@ class Style_template:
         """应用样式到表头。"""
     def apply_to_data(self): 
         """应用样式到数据行。"""
-if 1:# 一些简单的格式转换和读取           
+if 1:
+    
+    # 一些简单的格式转换和读取           
     def convert_to_json_stream(data):
         """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""
         json_string = json.dumps(data, indent=4, ensure_ascii=False)
@@ -424,18 +641,48 @@ if 1:# 一些简单的格式转换和读取
                         os.remove(file_path)
                 except Exception as e:
                     print(f'Failed to delete {file_path}. Reason: {e}')
+    
 
-
+    
 
 if "__main__" == __name__:
-    Xio=Excel_IO()
-    output=io.BytesIO()
-    excel_got=r"tests\for_xls2xlsx\xls_file.xls"
-    with open(excel_got, 'rb') as file:
-        output.write(file.read())
-    # 重置流的位置到开始处，这样就可以从头读取
-    output.seek(0)
-    Xio.convert_excel_format(output,"xls","xlsx",True)
-    input("xls文件已转化为xlsx文件，保存在tests/for_xls2xlsx目录下，请查看")
-
+    # Xio=Excel_IO()
+    # output=io.BytesIO()
+    # excel_got=r"tests\for_xls2xlsx\xls_file.xls"
+    # with open(excel_got, 'rb') as file:
+    #     output.write(file.read())
+    # # 重置流的位置到开始处，这样就可以从头读取
+    # output.seek(0)
+    # Xio.convert_excel_format(output,"xls","xlsx",True)
+    # input("xls文件已转化为xlsx文件，保存在tests/for_xls2xlsx目录下，请查看")
+    
+    # 进一步：字体、行宽有点不一样
+    # 实验格式、值复制
+    ## 创建对象
+    colorful_file=r"tests\for_concat\copy_style\colorful_sheet.xlsx"
+    colorful_wb=px.load_workbook(colorful_file)
+    colorful_ws=colorful_wb.worksheets[0]
+    new_wb=px.Workbook()
+    new_ws=new_wb.worksheets[0]
+    for row in range(1,10):
+        for col in range(1,20):
+            new_ws[f"{get_column_letter(col)}{row}"].value="我是税远志"
+    shopier=SheetCopier(colorful_wb,new_wb)
+    
+    ## 将source的1行复制到targer的2行
+    shopier.copy_some_row_attr(1, 2,["value"])
+    
+    ## 将source的各列宽同步到target
+    shopier.copy_all_col_widths()
+    
+    ## 将source的1行高同步到target的2行高
+    shopier.copy_some_row_height(1, 2)
+    
+    ## 将target的2行复制到target的5行
+    # all_data_attr=shopier.source_ws_attr.get_cell_attributes(2)
+    # shopier2=SheetCopier(new_wb,new_wb)
+    # shopier2.copy_row_attr(2,4)#进一步，data_only=True
+    
+    new_wb.save(os.path.join(StringPRO.get_filepath_variables(colorful_file)["folder_path"],"copy_color_sheet.xlsx"))
+    
     
