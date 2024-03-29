@@ -265,8 +265,10 @@ class Excel_attribute:
         for cell_range in cell_ranges_list:
             self.modify_CertainRange_style(cell_range, style_dict, not_modify_attr= not_modify_attr)
 
-    def get_cell_attributes(self, cell_reference):
-        """获取单元格的属性字典，包括value和hyperlink"""
+    def get_cell_attributes(self, cell_reference, not_get_attr=[]):
+        """获取单元格的属性字典，包括value和hyperlink,
+        但可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
         cell = self.excel_ws[cell_reference]
         attributes = {
             'font': copy(cell.font),
@@ -278,15 +280,20 @@ class Excel_attribute:
             'hyperlink': cell.hyperlink,
             'value': cell.value
         }
+        if len(not_get_attr)>0:
+            for i in not_get_attr:
+                attributes.pop(i)
         # 使用deepcopy可以确保对象是完全独立的副本
         return {cell_reference: deepcopy(attributes)}
     
-    def get_row_attributes(self, row_number):
-        """遍历获取一行所有单元格的属性字典"""
+    def get_row_attributes(self, row_number, not_get_attr=[]):
+        """遍历获取一行所有单元格的属性字典，包括value和hyperlink,
+        但可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
         row_attributes = {}
         for cell in self.excel_ws[row_number]:
             cell_reference = cell.coordinate
-            cell_attributes = self.get_cell_attributes(cell_reference)
+            cell_attributes = self.get_cell_attributes(cell_reference,not_get_attr=not_get_attr)
             row_attributes.update(cell_attributes)
         return row_attributes
     
@@ -308,7 +315,8 @@ class Excel_attribute:
         cell.alignment = Alignment()
         cell.value = None
         cell.hyperlink = None
-        
+    
+    
 
     '''def apply_cell_attributes(self, cell_reference, attributes):
         """将属性字典应用到指定单元格"""

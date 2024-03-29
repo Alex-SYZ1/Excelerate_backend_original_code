@@ -1,4 +1,3 @@
-# for concat：
 import os,sys,io 
 # import pandas as pd
 import openpyxl as px
@@ -26,7 +25,7 @@ class MergeExcelExporter:
         self.header_max_col,self.header_max_row=0,0#extract_template_info
         self.row_after_header=None##extract_template_info
         self.template_header_content=None##extract_template_info
-        self.template_data_style={}##extract_template_info
+        self.template_data_style={}##extract_template_info中update，key为column letter
         self.Xio=XPRO.Excel_IO() #自动创建，读写全部用这个对象读取。
         self.Xattr=None  #以样表为参数，extract_template_info
         self.group_datanum_dict={}#merge
@@ -56,7 +55,7 @@ class MergeExcelExporter:
                               header_range: str,
                               data_start_row: Union[str,int],
                               template_excel: IO[bytes]):
-        """
+        r"""
             从数据流获取：表头的范围；字段行；数据开始行；样表名与样表文件的字典
             功能：从样表中提取表头的内容、样式、位置；数据的位置、样式；样表
             输出到数据流：None
@@ -107,16 +106,16 @@ class MergeExcelExporter:
             #self.template_header_content.update(self.Xattr.get_range_cells_dict(min_col, min_row, max_col, max_row))
             #不是字典而是df了
         
-        # 先读取数据起始行的所有属性，然后去掉选字段时未选入的列
-        t_d_s=self.Xattr.get_row_attributes(data_start_row)
-        self.template_data_style={cell:cell_attr for cell,cell_attr in t_d_s.items() if range_boundaries(cell)[0] in needed_col}
+        # 先读取数据起始行的除了超链接以外的所有属性，然后去掉选字段时未选入的列
+        t_d_s=self.Xattr.get_row_attributes(data_start_row,["hyperlink"])
+        self.template_data_style.update({coordinate_from_string(cell)[0]:cell_attr for cell,cell_attr in t_d_s.items() if range_boundaries(cell)[0] in needed_col})
         self.data_row_height=self.Xattr.get_row_height(self.data_start_row)#?
         # 最终所需列，不需的最终去除；表头行与数据起始行之间的行，在后续读取数据时不会读取
         self.needed_col=sorted(list(needed_col))
         self.header_row=sorted(list(header_row))
         if self.header_row[-1]>=self.data_start_row:raise KeyError
         self.row_after_header=self.header_row[-1]+1
-        self.not_needed_col=[col for col in list(range(0,max(self.needed_col)+1)) if col not in self.needed_col]
+        self.not_needed_col=[col for col in list(range(1,max(self.needed_col)+1)) if col not in self.needed_col]
         self.header_max_col,self.header_max_row=max(self.needed_col),max(self.header_row)
         self.template_header_content=self.Xattr.get_range_value_df(0,0,self.header_max_col,self.header_max_row) 
         if self.header_max_row+1<self.data_start_row:
@@ -193,6 +192,19 @@ class MergeExcelExporter:
             self.group_datanum_dict[file_item_name]=file_item_data_num
             
         self.Xattr.append_df_to_ws_from_row(file_group_data,self.data_start_row)
+        
+        
+        #设置样式
+        #使用列号匹配
+        for col_letter,col_data_style in (self.template_data_style.items()) :
+            col_data_min_row,col_data_max_row=self.data_start_row,min(self.Xattr.get_max_row_col()["max_row"])
+            col_data_range=f"{col_letter}{col_data_min_row}:{col_letter}{col_data_max_row}"
+            self.Xattr.modify_CertainRange_style(col_data_range,col_data_style,not_modify_attr = ["value"])
+        
+        # 选择表头时，可不选部分列，故此处将该列去除
+        if self.not_needed_col:
+            for del_col in self.not_needed_col:
+                self.final_excel_ws.delete_cols(del_col)
         return self.Xio.stream_excel_to_frontend(self.final_excel_wb)
     
 if __name__ == "__main__":
@@ -221,19 +233,19 @@ if __name__ == "__main__":
     template_no_data_stream=test_file_upload.stream_excel_to_frontend(template_no_data_wb)
     
     merge_excel_exporter.extract_template_info("A1:AH1","3",template_no_data_stream)
-    print("●该样表所选数据行的各单元格样式如下\n===========")
-    print(merge_excel_exporter.template_data_style)
+    # print("●该样表所选数据行的各单元格样式如下\n===========")
+    # print(merge_excel_exporter.template_data_style)
     merge_excel_exporter.final_excel_wb.save(J(template_file_path,"仅含表头的总表1_基于"+"样表1_无数据.xlsx"))#?
     # 结果文件已保存至同一文件夹
     
-    ## 情况2：样表文件中有数据
-    template_with_data_wb,_=test_file_upload.read_excel_file(J(template_file_path,"样表2_有数据.xlsx"))
-    template_with_data_stream=test_file_upload.stream_excel_to_frontend(template_with_data_wb)
+    # ## 情况2：样表文件中有数据
+    # template_with_data_wb,_=test_file_upload.read_excel_file(J(template_file_path,"样表2_有数据.xlsx"))
+    # template_with_data_stream=test_file_upload.stream_excel_to_frontend(template_with_data_wb)
     
-    merge_excel_exporter.extract_template_info("A1:AH1","3",template_with_data_stream)
-    #print("●该样表所选数据行的各单元格样式如下\n===========")
-    #print(merge_excel_exporter.template_data_style)
-    merge_excel_exporter.final_excel_wb.save(J(template_file_path,"仅含表头的总表2_基于"+"样表2_有数据.xlsx"))#?
+    # merge_excel_exporter.extract_template_info("A1:AH1","3",template_with_data_stream)
+    # #print("●该样表所选数据行的各单元格样式如下\n===========")
+    # #print(merge_excel_exporter.template_data_style)
+    # merge_excel_exporter.final_excel_wb.save(J(template_file_path,"仅含表头的总表2_基于"+"样表2_有数据.xlsx"))#?
     # 结果文件已保存至同一文件夹
     
     
