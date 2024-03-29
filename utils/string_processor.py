@@ -1,4 +1,5 @@
 import difflib,re,random,os
+import pandas as pd
 def get_filepath_variables(excel_got):
     """返回excel_got的folder_path,file_basename,file_extension,file_name的键值对字典"""
     folder_path=os.path.dirname(excel_got)
@@ -34,6 +35,80 @@ def generate_strict_regex_and_example(input_list):
 # 使用正则表达式
 def match_with_regex(regex, string_to_test):
     return re.match(regex, string_to_test) is not None
+def check_strings(a, b):#范围比较宽 #进一步：修改
+    # 移除字符串中的所有空白符（包括空格、换行符等）
+    if a== "__SPECIAL_VALUE__" or b=="__SPECIAL_VALUE__":return True
+    stripping = lambda x:("".join(x.split())).replace("（","(").replace("）",")").upper()
+    stripped_a = stripping(a)
+    stripped_b = stripping(b)
+    return stripped_a in stripped_b or stripped_b in stripped_a
+def check_cell_value(value1, value2):
+    # 处理 NaN 情况
+    if pd.isnull(value1) and pd.isnull(value2):
+        return True
+    # 确保两个值的类型相同
+    try:
+        if isinstance(value1, float) or isinstance(value2, float):
+            # 尝试转换为float进行比较
+            return float(value1) == float(value2)
+        elif isinstance(value1, int) or isinstance(value2, int):
+            # 尝试转换为int进行比较
+            return int(value1) == int(value2)
+        else:
+            # 默认作为str处理
+            return check_strings(value1,value2)
+    except ValueError:
+        # 如果转换失败，直接比较原始值
+        return value1 == value2
+import pandas as pd
+
+# 假设的 check_cell_value 函数
+def check_cell_value(value1, value2):
+    return value1 == value2
+
+def verify_df(df1, df2):
+    if df1.shape != df2.shape:
+        return False, {}
+    # 去除填充的上方左方单元格
+    df1=df1.iloc[1:,1:]
+    df2=df2.iloc[1:,1:]
+    wrong_rows = []
+    wrong_cells = []
+    wrong_cols = []
+    col_pairs = []
+
+    # 比较行
+    for index, (row1, row2) in enumerate(zip(df1.iterrows(), df2.iterrows())):
+        row_index, rowData1 = row1
+        _, rowData2 = row2
+        row_compare = [check_cell_value(cell1, cell2) for cell1, cell2 in zip(rowData1, rowData2)]
+
+        if all(row_compare):
+            continue
+        elif not any(row_compare):
+            return False, {"row_index": row_index}
+        else:
+            wrong_rows.append(index)
+            wrong_cells.extend([(index, col_index) for col_index, correct in enumerate(row_compare) if not correct])
+    if wrong_rows==[]:return True,{}
+    """# 检查错误的单元格是否集中在特定的列 #进一步。不是简单交换、交换后df相等
+    wrong_cols = list(set([cell[1] for cell in wrong_cells]))
+
+    # 尝试列交换
+    if len(wrong_cols) % 2 == 0:
+        for i in range(0, len(wrong_cols), 2):
+            col1, col2 = wrong_cols[i], wrong_cols[i+1]
+            df2_copy = df2.copy()
+            df2_copy.iloc[:, [col1, col2]] = df2_copy.iloc[:, [col2, col1]]
+            if df2_copy.equals(df1):
+                col_pairs.append((col1, col2))
+        if col_pairs:
+            return False, {"change_col": col_pairs}"""
+
+    # 如果没有正确的列交换，返回错误的单元格坐标
+    return False, {"cell_coord": wrong_cells}
+
+
 if "codes from openpyxl.util.cell":
     # Copyright (c) 2010-2020 openpyxl
 

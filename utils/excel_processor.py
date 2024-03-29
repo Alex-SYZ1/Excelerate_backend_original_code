@@ -1,10 +1,14 @@
 import openpyxl as px
+import pandas as pd
+import numpy as np
 from copy import copy,deepcopy
 import io,json,re,os,warnings,shutil,sys
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.utils import range_boundaries, get_column_letter
 import win32com.client as win32
+import pythoncom
 warnings.filterwarnings("ignore", category=UserWarning)
 
 """用于导入项目中不在同一文件夹的库"""
@@ -73,6 +77,8 @@ class Excel_IO:
         # 清理之前的临时文件
         clear_directory(self.temp_path)
         
+        pythoncom.CoInitialize()
+        
         # 确保源格式和目标格式是受支持的
         if src_format not in self.FORMATS or dst_format not in self.FORMATS:
             raise ValueError('Unsupported format specified.')
@@ -81,7 +87,7 @@ class Excel_IO:
         dst_tempfile_path=os.path.abspath(os.path.join(self.temp_path,f"temp.{dst_format}"))
         
         # 创建 Excel 对象
-        excel = win32.gencache.EnsureDispatch('Excel.Application')
+        excel = win32.DispatchEx('Excel.Application')
         excel.Visible = False  # 不显示Excel界面
         
         # 创建输出流
@@ -91,11 +97,16 @@ class Excel_IO:
         with open(src_tempfile_path, "wb") as temp_file:
             temp_file.write(input_bytes.getvalue())
         # 打开源文件
-        workbook = excel.Workbooks.Open(os.path.abspath(src_tempfile_path))
+        try:
+            workbook = excel.Workbooks.Open(os.path.abspath(src_tempfile_path))
 
-        # 另存为目标格式的文件
-        workbook.SaveAs(dst_tempfile_path, FileFormat=self.FORMATS[dst_format])
-        workbook.Close(True)
+            # 另存为目标格式的文件
+            workbook.SaveAs(dst_tempfile_path, FileFormat=self.FORMATS[dst_format])
+        
+            
+        finally:
+            workbook.Close(False)#True改为False了
+            excel.Quit()#去掉了后面quit
 
         # 读取目标文件到BytesIO对象
         with open(dst_tempfile_path, "rb") as temp_file:
@@ -108,11 +119,12 @@ class Excel_IO:
         if not save_dst:
             os.remove(dst_tempfile_path)
 
-        # 关闭 Excel 进程
-        excel.Application.Quit()
+        # # 关闭 Excel 进程
+        # excel.Application.Quit()
 
         # 设置输出流的指针回到起始位置，以便于读取
         output_io.seek(0)
+        pythoncom.CoUninitialize()
         return output_io
 
 
@@ -133,7 +145,30 @@ class Excel_attribute:
         transform_cell=lambda cell:cell.value if value_only==True else cell
         excel_field=[transform_cell(cell) for cell in self.excel_ws[index]]
         return excel_field
-    def get_range_cells_dict(self, min_col, min_row, max_col, max_row, value_only=True):
+    
+    def get_range_value_df(self, min_col, min_row, max_col, max_row,excel_ws=None):#需要获取除了self.excel_ws之外的其它单元格吗
+        """获取指定区域内的单元格值，存储到df,可以行列索引#保护最大行、最大列"""
+        cells = []
+        if excel_ws==None:excel_ws=self.excel_ws
+        for row in excel_ws.iter_rows(min_col=min_col, 
+                                            min_row=min_row, 
+                                            max_col=max_col, 
+                                            max_row=max_row):
+            cells.append([cell.value for cell in row])
+        add_none_cells=[[None]*(max_col-min_col+2)]+[[None]+row for row in cells]
+        return pd.DataFrame(add_none_cells)
+    
+                
+    def axising_range_value_df(self,range_value_df,ws_row=None,ws_column=None,set_Nan=False):
+        """获取/赋空df的特定行/列值"""
+        if not set_Nan:
+            if ws_row:range_value_df.iloc[ws_row,:] 
+            if ws_column:range_value_df.iloc[:,ws_column]
+        else:
+            if ws_row:range_value_df.iloc[ws_row,:]="__SPECIAL_VALUE__"
+            if ws_column:range_value_df.iloc[:,ws_column]="__SPECIAL_VALUE__"
+            return range_value_df
+    def get_range_cells_dict(self, min_col, min_row, max_col, max_row, value_only=True):#暂时好像不用了
         """获取指定区域内的单元格，返回一个字典，其中键是单元格的位置，值是单元格的内容或对象"""
         transform_cell = lambda cell: cell.value if value_only else cell
         cells_dict = {}
@@ -146,13 +181,13 @@ class Excel_attribute:
                 cells_dict[cell_coordinate] = transform_cell(cell)
         return cells_dict
 
-
     
     def get_max_row_col(self):
         """worksheet提供的属性来获取最大行列数问题：目前发现单元格有颜色填充、字色等也会被视为有内容的单元格；
            根据值遍历出的最大行列数则无此问题
            此外，纯下拉列表无选择值，二者都不会视为单元格有内容
-           故返回两种方法分别产生的最大行列数集合"""
+           故返回两种方法分别产生的最大行列数集合"max_col""max_row"
+        """
         px_max_row = self.excel_ws.max_row
         px_max_col = self.excel_ws.max_column
         value_max_row = 0
@@ -167,7 +202,25 @@ class Excel_attribute:
                         value_max_col = max(value_max_col, cell.column)
         return {"max_col":{px_max_col,value_max_col},
                 "max_row":{px_max_row,value_max_row}}
-  
+    
+    def append_df_to_ws_from_row(self,df, start_row, include_index=False, include_header=False):
+        """
+        从指定的行开始，将pandas DataFrame添加到openpyxl worksheet中。
+
+        :param ws: openpyxl worksheet对象。
+        :param df: 要添加的pandas DataFrame对象。
+        :param start_row: 开始添加的起始行。
+        :param include_index: 是否包含DataFrame的索引作为额外的一列。
+        :param include_header: 是否包含DataFrame的列名作为额外的一行。
+        """
+        ws=self.excel_ws
+        # 转换DataFrame为worksheet的行
+        rows = dataframe_to_rows(df, index=include_index, header=include_header)
+        for r_idx, r in enumerate(rows, start=1):
+            for c_idx, value in enumerate(r, start=1):
+                # 从指定的start_row开始添加
+                ws.cell(row=start_row + r_idx - 1, column=c_idx, value=value)
+                
     def modify_cell_style(self, cell, style_dict,not_modify_attr=[]):
         """使用字典参数来修改某一单元格的样式属性，可自选不修改的属性
             ['font', 'border', 'fill', 'number_format',
@@ -654,8 +707,8 @@ if "__main__" == __name__:
     # # 重置流的位置到开始处，这样就可以从头读取
     # output.seek(0)
     # Xio.convert_excel_format(output,"xls","xlsx",True)
-    # input("xls文件已转化为xlsx文件，保存在tests/for_xls2xlsx目录下，请查看")
-    
+    # input("xls文件已转化为xlsx文件，保存在tmp目录下，请查看")
+
     # 进一步：字体、行宽有点不一样
     # 实验格式、值复制
     ## 创建对象

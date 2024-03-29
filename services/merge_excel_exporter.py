@@ -7,13 +7,11 @@ from openpyxl.utils import get_column_letter,coordinate_to_tuple,range_boundarie
 from typing import IO, List, Dict, Union
 
 
-
 """用于导入项目中不在同一文件夹的库"""
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import utils.excel_processor as XPRO
-import utils.string_processor as StringPRO
-from utils.string_processor import coordinate_from_string
+from utils.string_processor import *
 class MergeExcelExporter:
     def __init__(self): 
         """初始化方法，创建一个DataFrame和excel"""
@@ -23,13 +21,16 @@ class MergeExcelExporter:
         self.final_excel_wb,self.final_excel_ws,self.template_info=None,None,{}
         self.header_row=[]#extract_template_info
         self.needed_col=[]#extract_template_info
-        self.not_needed_col=[]#?#extract_template_info进一步。最终删掉不需要的这么个删法
+        self.have_seprows=False#extract_template_info
+        self.not_needed_col=[]##extract_template_info进一步。最终删掉不需要的这么个删法
+        self.header_max_col,self.header_max_row=0,0#extract_template_info
         self.row_after_header=None##extract_template_info
-        self.template_header_content={}##extract_template_info
+        self.template_header_content=None##extract_template_info
         self.template_data_style={}##extract_template_info
         self.Xio=XPRO.Excel_IO() #自动创建，读写全部用这个对象读取。
         self.Xattr=None  #以样表为参数，extract_template_info
-      
+        self.group_datanum_dict={}#merge
+
     def acquire_excel_group(self, stream_data: dict) -> list:
         """
         从数据流获取：用于合并的excel文件群
@@ -54,7 +55,7 @@ class MergeExcelExporter:
     def extract_template_info(self, 
                               header_range: str,
                               data_start_row: Union[str,int],
-                              template_excel: IO[bytes]) -> dict:
+                              template_excel: IO[bytes]):
         """
             从数据流获取：表头的范围；字段行；数据开始行；样表名与样表文件的字典
             功能：从样表中提取表头的内容、样式、位置；数据的位置、样式；样表
@@ -103,8 +104,9 @@ class MergeExcelExporter:
             # 整行整列的情况，默认px识别的最大行列
             max_col = self.final_excel_ws.max_column if not max_col else max_col
             max_row = self.final_excel_ws.max_row if not max_row else max_row
-            self.template_header_content.update(self.Xattr.get_range_cells_dict(min_col, min_row, max_col, max_row))
-            
+            #self.template_header_content.update(self.Xattr.get_range_cells_dict(min_col, min_row, max_col, max_row))
+            #不是字典而是df了
+        
         # 先读取数据起始行的所有属性，然后去掉选字段时未选入的列
         t_d_s=self.Xattr.get_row_attributes(data_start_row)
         self.template_data_style={cell:cell_attr for cell,cell_attr in t_d_s.items() if range_boundaries(cell)[0] in needed_col}
@@ -114,14 +116,39 @@ class MergeExcelExporter:
         self.header_row=sorted(list(header_row))
         if self.header_row[-1]>=self.data_start_row:raise KeyError
         self.row_after_header=self.header_row[-1]+1
+        self.not_needed_col=[col for col in list(range(0,max(self.needed_col)+1)) if col not in self.needed_col]
+        self.header_max_col,self.header_max_row=max(self.needed_col),max(self.header_row)
+        self.template_header_content=self.Xattr.get_range_value_df(0,0,self.header_max_col,self.header_max_row) 
+        if self.header_max_row+1<self.data_start_row:
+            self.have_seprows=True
+            self.template_seprows_content=self.Xattr.get_range_value_df(0,self.header_max_row+1,self.header_max_col,self.data_start_row-1) 
+        for col in self.not_needed_col:
+            self.template_header_content=self.Xattr.axising_range_value_df(self.template_header_content,ws_column=col)
         # 将样表表头之后的行，单元格属性全部清空
 
-        for to_clear_row in self.final_excel_ws.iter_rows(min_row=self.row_after_header):
+        for to_clear_row in self.final_excel_ws.iter_rows(min_row=self.data_start_row):
             for to_clear_cell in to_clear_row:
                 self.Xattr.clear_cell_attributes(to_clear_cell)
             self.Xattr.set_row_height(to_clear_row[0].row,self.data_row_height)
+    def verify_excel(self,excel_wb):
+        """先后检验表头、跳过行、数据起始行内容是否有误
+
+        Args:
+            excel_wb (_type_): _description_
+        """
+        return True
+        excel_item_Xattr=XPRO.Excel_attribute(excel_wb)
+        excel_item_ws=excel_wb.worksheets[0]
+        excel_item_header_content=excel_item_Xattr.get_range_value_df(0,0,self.header_max_col,self.header_max_row)
         
-    def verify_excel_files(self, excel_paths: list, template_info: dict) -> list:
+        header_verify_flag, header_verify_output= verify_df(self.template_header_content, excel_item_header_content)
+        if not header_verify_flag:return header_verify_output
+        if self.have_seprows:
+            excel_item_seprows_content=excel_item_Xattr.get_range_value_df(0,self.header_max_row+1,self.header_max_col,self.data_start_row-1)
+            #和self.template_seprows_content对比
+        # 进一步：可能不全是string，还有数字之类的，要另外写函数
+        
+    def verify_excel_group(self, excel_paths: list, template_info: dict):
         """
         检查所有表格是否符合样表格式
         输出到数据流：符合样表格式的Excel文件路径列表
@@ -142,27 +169,31 @@ class MergeExcelExporter:
         """
         pass  # 实现代码逻辑
 
-    def merge_and_format_excels(self, verified_paths: list, template_info: dict) -> str:
+    def merge_and_format_excels(self) -> IO[bytes]:
         """
-        将所有符合格式的表格批量合并，并根据样表设置格式
+        将所有处理后符合格式的表格批量合并，并根据样表设置格式
         输出到数据流：合并后的Excel文件路径
 
-        Parameters from stream:
-            verified_paths (list):
-                content: 经过验证，格式符合样表的Excel文件路径列表
-                format : ["path1.xlsx", "path2.xlsx", ...]
-            template_info (dict):
-                content: 样表的表头、数据位置、内容、样式信息
-                format : {"headers": {"A1": "序号", "B1": "姓名", ...},
-                        "data_start": "A2",
-                        "styles": { ... }}
+        Parameters from stream:None
+
         Returns to stream:
-            merged_excel_path (str):
-                content: 合并后的Excel文件路径
-                format : "merged.xlsx"
+            merged_excel (IO[bytes]):
+                content: 合并后的Excel文件数据流
         """
-        pass  # 实现代码逻辑
-    
+        # TODO：
+        #
+        #合并所有数据
+        file_group_data=pd.DataFrame()
+        for file_item_name,(file_item_wb,file_item_ws) in self.excel_merge_dict.items():
+            file_item_attr=XPRO.Excel_attribute(file_item_wb,file_item_ws)
+            file_item_max_row=min(file_item_attr.get_max_row_col()["max_row"])
+            file_item_data_num=file_item_max_row-self.data_start_row+1
+            file_item_data=file_item_attr.get_range_value_df(0,self.data_start_row,self.header_max_col,file_item_max_row).iloc[1:,1:]
+            file_group_data=pd.concat([file_group_data,file_item_data])
+            self.group_datanum_dict[file_item_name]=file_item_data_num
+            
+        self.Xattr.append_df_to_ws_from_row(file_group_data,self.data_start_row)
+        return self.Xio.stream_excel_to_frontend(self.final_excel_wb)
     
 if __name__ == "__main__":
     from os.path import join as J
@@ -174,7 +205,7 @@ if __name__ == "__main__":
     # 逐一获取文件群文件，px读取，然后load到数据流
     for file_of_group in [J(file_group_path,j) for j in os.listdir(file_group_path)]:
         wb,ws=test_file_upload.read_excel_file(file_of_group)
-        file_group_dict[StringPRO.get_filepath_variables(file_of_group)["file_name"]]=test_file_upload.stream_excel_to_frontend(wb)
+        file_group_dict[get_filepath_variables(file_of_group)["file_name"]]=test_file_upload.stream_excel_to_frontend(wb)
     # 创建对象
     merge_excel_exporter=MergeExcelExporter()
     
@@ -200,7 +231,14 @@ if __name__ == "__main__":
     template_with_data_stream=test_file_upload.stream_excel_to_frontend(template_with_data_wb)
     
     merge_excel_exporter.extract_template_info("A1:AH1","3",template_with_data_stream)
-    print("●该样表所选数据行的各单元格样式如下\n===========")
-    print(merge_excel_exporter.template_data_style)
+    #print("●该样表所选数据行的各单元格样式如下\n===========")
+    #print(merge_excel_exporter.template_data_style)
     merge_excel_exporter.final_excel_wb.save(J(template_file_path,"仅含表头的总表2_基于"+"样表2_有数据.xlsx"))#?
     # 结果文件已保存至同一文件夹
+    
+    
+    # 关于检验的第三、四个方法先跳过
+    
+    # 测试第五个方法
+    merged_excel_stream=merge_excel_exporter.merge_and_format_excels()
+    test_file_upload.load_workbook_from_stream(merged_excel_stream)[0].save(J(r"tests\for_concat\for_func5_merge_and_format_excels","总表.xlsx"))
