@@ -35,6 +35,22 @@ def generate_strict_regex_and_example(input_list):
 # 使用正则表达式
 def match_with_regex(regex, string_to_test):
     return re.match(regex, string_to_test) is not None
+
+def transform_pattern_to_description(pattern):
+    # 用于选项的模式 (例如, '^(?:是|否)$')
+    options_match = re.match(r'^\^\(\?\:(.*?)\)\$$', pattern)
+    if options_match:
+        options = options_match.group(1).split('|')
+        return "该单元格选项可以为："+'，'.join(options)
+    
+    # 用于字符范围的模式 (例如, '^[a-z]$')
+    range_match = re.match(r'^\^\[([a-z\-]+)\]\$$', pattern)
+    if range_match:
+        return f"该单元格选项范围是：{range_match.group(1)}"
+    
+    # 处理更复杂的情况或返回一个通用的消息
+    return "复杂模式，需要进一步分析"
+
 def check_strings(a, b):#范围比较宽 #进一步：修改
     # 移除字符串中的所有空白符（包括空格、换行符等）
     if a== "__SPECIAL_VALUE__" or b=="__SPECIAL_VALUE__":return True

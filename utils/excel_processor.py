@@ -236,7 +236,7 @@ class Excel_attribute:
             possible_attributes = [attr for attr  in possible_attributes if attr not in not_modify_attr]
         
         # copy value seperately
-        if "value" not in not_modify_attr:
+        if ("value" in style_dict) and ("value" not in not_modify_attr):
             self.excel_ws.cell(row=cell.row,column=cell.column,value=style_dict["value"])
         # Iterate over possible attributes and update if provided in style_dict
         for attr_name in possible_attributes:
