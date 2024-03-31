@@ -34,6 +34,7 @@ def generate_strict_regex_and_example(input_list):
 
 # 使用正则表达式
 def match_with_regex(regex, string_to_test):
+    string_to_test=str(string_to_test)
     return re.match(regex, string_to_test) is not None
 
 def transform_pattern_to_description(pattern):
