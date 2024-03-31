@@ -28,7 +28,7 @@ class FileValidator:
                            fill_type='solid'),
                                  "font":Font(strike=True)}                                #进一步，设置一个自定义错误样式选项
         self.original_cell_style={}                                #从文件读取正确单元格样式
-        
+        self.previous_error_cells=[]
     def get_files_stream        (self, 
                                 excel_got:                  io.BytesIO, 
                                 file_name:                  str, 
@@ -55,14 +55,26 @@ class FileValidator:
         self.file_name=file_name
         self.file_stream=excel_got
         
-        #读取数据起始位置、字段名、规则正则表达式、规则样例到dict，该字段数据区域在下一步validate_filled_excel中读出#进一步：是否需要仅仅在最初读区域、后续不允许添加？
-        self.range_and_rule=final_rules_and_examples
-        
-
         if self.file_name.endswith("xls"):
             self.file_stream=self.Xio.convert_excel_format(self.file_stream,"xls","xlsx",True)
-        self.excel_wb,self.excel_ws=self.Xio.load_workbook_from_stream(self.file_stream)
-        self.original_cell_style.update(self.Xattr.get_row_attributes())
+            
+        self.excel_wb,self.excel_ws=self.Xio.load_workbook_from_stream(copy.copy(self.file_stream))
+        self.Xattr=XPRO.Excel_attribute(self.excel_wb,self.excel_ws)
+        #读取数据起始位置、字段名、规则正则表达式、规则样例到dict，该字段数据区域在下一步validate_filled_excel中读出#进一步：是否需要仅仅在最初读区域、后续不允许添加？
+        self.range_and_rule=final_rules_and_examples
+        all_data_ranges=[]
+        #在load 的json文件dict每个key的value基础上，再加上了该规则适用的数据范围
+        data_end_row=min(self.Xattr.get_max_row_col()["max_row"])
+        range_and_rule=copy.deepcopy(self.range_and_rule)
+        for data_begin_cell in range_and_rule:
+            data_col,data_begin_row=coordinate_from_string(data_begin_cell)
+            data_range=f"{data_col}{data_begin_row}:{data_col}{data_end_row}"
+            range_and_rule[data_begin_cell].append(data_range)
+            all_data_ranges.append(data_range)
+        self.range_and_rule=range_and_rule
+        #获取特定区域
+        
+        self.original_cell_style.update(self.Xattr.get_MutipleRange_attributes(",".join(all_data_ranges),["value"]))
         return self.file_stream#进一步：后端转化格式。修改self.excel_got变量
         
     def validate_filled_excel      (self, 
@@ -90,15 +102,8 @@ class FileValidator:
         self.excel_wb,self.excel_ws=self.Xio.load_workbook_from_stream(filled_excel_file)
         self.Xattr=XPRO.Excel_attribute(self.excel_wb,self.excel_ws)
         
-        #在load 的json文件dict每个key的value基础上，再加上了该规则适用的数据范围
-        data_end_row=min(self.Xattr.get_max_row_col()["max_row"])
-        range_and_rule=copy.deepcopy(self.range_and_rule)
-        for data_begin_cell in range_and_rule:
-            data_col,data_begin_row=coordinate_from_string(data_begin_cell)
-            data_range=f"{data_col}{data_begin_row}:{data_col}{data_end_row}"
-            range_and_rule[data_begin_cell].append(data_range)
-        #print(range_and_rule)
-        def validate_all_data(range_and_rule=range_and_rule):
+
+        def validate_all_data(range_and_rule):
             # 获得错误单元格的位置key 规则、样例、错误次数value，默认不是再次错 设为False 后续检验改
             error_cells_info={}
             for data_field,rule_and_example,data_range in range_and_rule.values():
@@ -113,24 +118,22 @@ class FileValidator:
 
             
         # 首先检验获得当前所有错误单元格
-        current_error_cells_info=validate_all_data()
-        previous_error_cells=copy.copy(list(self.original_cell_style.keys()))
-        # 然后检验之前的错误单元格是否错误，若正确则字典去除该单元格并恢复样式，若错误则标注为再次错误
-        for previous_error_cell in previous_error_cells:
+        current_error_cells_info=validate_all_data(self.range_and_rule)
+        wrong_to_verified_cells=[]
+        # 然后检验之前的错误单元格是否错误，若正确则恢复样式，若错误则标注为再次错误
+        for previous_error_cell in self.previous_error_cells:
             if previous_error_cell not in current_error_cells_info:
                 validated_cell_style = self.original_cell_style[previous_error_cell]
-                self.original_cell_style
-                self.Xattr.modify_cell_style(previous_error_cell,validated_cell_style)
+                self.Xattr.modify_cell_style(previous_error_cell,validated_cell_style)#???
+                wrong_to_verified_cells.append(previous_error_cell)
             else:
                 current_error_cells_info[previous_error_cell][-1]=True
-        
+        self.previous_error_cells=[cell for cell in self.previous_error_cells if cell not in wrong_to_verified_cells]
         # 最后检验当前错误单元格是否之前错过，错过则不改样式，否则修改样式为错误样式；两种情况均产生错误单元格提示文本到字典
         wrong_cells_info={}
         for current_error_cell,(data_rule,data_example,again_error_flag) in current_error_cells_info.items():
-            if 1:#again_error_flag==False:
-                self.original_cell_style.update(self.Xattr.get_cell_attributes(current_error_cell,['value']))
-                print(current_error_cell,self.original_cell_style[current_error_cell]['fill'])
-                self.Xattr.modify_cell_style(current_error_cell,self.error_cell_style)
+            
+            self.Xattr.modify_cell_style(current_error_cell,self.error_cell_style)
             wrong_cells_info[current_error_cell]=f"{transform_pattern_to_description(data_rule)}\n例如可填写：{data_example}"
         
         validated_excel_stream=self.Xio.stream_excel_to_frontend(self.excel_wb)
@@ -164,7 +167,7 @@ if __name__ == "__main__":
     #读取excel文件、规则json文件，是第一个方法的参数
     
     ##初始xlsx文件的文件名、目录、文件数据流等
-    excel_got_path=r"tests\for_favor_func1_2_3\登记表+税远志.xls"
+    excel_got_path=r"tests\for_favor_func1_2_3\登记表+税远志.xlsx"
     
     ##用于后续输出文件的参数，输出文件用于方便直观感受程序结果
     excel_got_variables=get_filepath_variables(excel_got_path)

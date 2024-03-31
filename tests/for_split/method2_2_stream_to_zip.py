@@ -2,7 +2,7 @@ import zipfile
 import io,os
 from method2_1_tmp_to_zip import open_folder_choose_file
 
-
+def stream_files_to_zip(file_data)
 if __name__ == "__main__":
     # 模拟后端处理完的数据
     file_data = {

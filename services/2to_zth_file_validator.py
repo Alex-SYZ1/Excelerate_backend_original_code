@@ -23,10 +23,9 @@ class FileValidator:
 
         #一开始即创建，然后在整个类均可调用
         self.Xio=XPRO.Excel_IO()                                                    #自动创建，读写全部用这个对象读取。
-        self.error_cell_style  ={"fill":PatternFill(start_color='FFFF0000',
-                           end_color='FFFF0000',
-                           fill_type='solid'),
-                                 "font":Font(strike=True)}                                #进一步，设置一个自定义错误样式选项
+        self.error_cell_style  ={"fill":PatternFill(start_color='FFFF00',
+                                                    end_color='FFFF00',
+                                                    fill_type='solid')}                                #进一步，设置一个自定义错误样式选项
         self.original_cell_style={}                                #从文件读取正确单元格样式
         
     def get_files_stream        (self, 
@@ -58,12 +57,12 @@ class FileValidator:
         #读取数据起始位置、字段名、规则正则表达式、规则样例到dict，该字段数据区域在下一步validate_filled_excel中读出#进一步：是否需要仅仅在最初读区域、后续不允许添加？
         self.range_and_rule=final_rules_and_examples
         
-
-        if self.file_name.endswith("xls"):
+        if self.file_name.endswith("xlsx"):
+            return self.file_stream
+        elif self.file_name.endswith("xls"):
             self.file_stream=self.Xio.convert_excel_format(self.file_stream,"xls","xlsx",True)
-        self.excel_wb,self.excel_ws=self.Xio.load_workbook_from_stream(self.file_stream)
-        self.original_cell_style.update(self.Xattr.get_row_attributes())
-        return self.file_stream#进一步：后端转化格式。修改self.excel_got变量
+            return self.file_stream#进一步：后端转化格式。修改self.excel_got变量
+        else:raise TypeError#进一步：报错内容文本商讨。后端传输代号，前端呈现错误信息。
         
     def validate_filled_excel      (self, 
                                     filled_excel_file:io.BytesIO)-> Union[dict,IO[bytes]]:
@@ -114,24 +113,22 @@ class FileValidator:
             
         # 首先检验获得当前所有错误单元格
         current_error_cells_info=validate_all_data()
-        previous_error_cells=copy.copy(list(self.original_cell_style.keys()))
+        
         # 然后检验之前的错误单元格是否错误，若正确则字典去除该单元格并恢复样式，若错误则标注为再次错误
-        for previous_error_cell in previous_error_cells:
+        for previous_error_cell in self.original_cell_style:
             if previous_error_cell not in current_error_cells_info:
-                validated_cell_style = self.original_cell_style[previous_error_cell]
-                self.original_cell_style
+                validated_cell_style = self.original_cell_style.pop(previous_error_cell)
                 self.Xattr.modify_cell_style(previous_error_cell,validated_cell_style)
             else:
                 current_error_cells_info[previous_error_cell][-1]=True
         
         # 最后检验当前错误单元格是否之前错过，错过则不改样式，否则修改样式为错误样式；两种情况均产生错误单元格提示文本到字典
         wrong_cells_info={}
-        for current_error_cell,(data_rule,data_example,again_error_flag) in current_error_cells_info.items():
-            if 1:#again_error_flag==False:
-                self.original_cell_style.update(self.Xattr.get_cell_attributes(current_error_cell,['value']))
-                print(current_error_cell,self.original_cell_style[current_error_cell]['fill'])
+        for current_error_cell,(data_rule,data_example,again_error_flag) in current_error_cells_info:
+            if again_error_flag==False:
+                self.original_cell_style[current_error_cell]=self.Xattr.get_cell_attributes(current_error_cell,'value')
                 self.Xattr.modify_cell_style(current_error_cell,self.error_cell_style)
-            wrong_cells_info[current_error_cell]=f"{transform_pattern_to_description(data_rule)}\n例如可填写：{data_example}"
+            wrong_cells_info=f"{transform_pattern_to_description(data_rule)}\n例如可填写：{data_example}"
         
         validated_excel_stream=self.Xio.stream_excel_to_frontend(self.excel_wb)
         return wrong_cells_info,validated_excel_stream#进一步：是否允许继续在表格内填写(或者说在程序内输入的方式？)
@@ -192,17 +189,15 @@ if __name__ == "__main__":
     Favor.Xio.save_excel(excel_wb_func1,excel_path=func1_file_save_path)
     
     # 测试第二个方法(样例文件中D6 D7 D8都写错了，程序将予以标红)
-    for i in range(1,3):
-        print(f"●func2测试第{i}次")
-        func2_file_name="after_func2_"+file_basename+".xlsx"
-        func2_file_save_path=os.path.join(excel_got_variables["folder_path"],func2_file_name)
-        
-        error_info,excel_=Favor.validate_filled_excel(excel_stream)
-        
-        print(f"func2:\n程序发现表格内有错误单元格如下:\n{error_info}")
-        ## 保存return值，方便感受结果，即方法二输出的excel文件
-        excel_wb_func2=Favor.Xio.load_workbook_from_stream(excel_)[0]
-        Favor.Xio.save_excel(excel_wb_func2,excel_path=func2_file_save_path)
+    func2_file_name="after_func2_"+file_basename+".xlsx"
+    func2_file_save_path=os.path.join(excel_got_variables["folder_path"],func2_file_name)
+    
+    rule_,excel_,error_index_col=Favor.validate_filled_excel(excel_stream)
+    
+    print(f"func2:\n程序发现表格内有错误单元格如下:\n{error_index_col}")
+    ## 保存return值，方便感受结果，即方法二输出的excel文件
+    excel_wb_func2=Favor.Xio.load_workbook_from_stream(excel_)[0]
+    Favor.Xio.save_excel(excel_wb_func2,excel_path=func2_file_save_path)
     
     # 测试第三个方法
     func3_file_name="after_func3_"+file_basename+".xlsx"
@@ -210,12 +205,12 @@ if __name__ == "__main__":
     # 修改错误值后使用第二个方法验证有无错误值
     excel_wb_to_correct=excel_wb_func2
     excel_ws_to_correct=excel_wb_to_correct.worksheets[0]
-    for cell in [excel_ws_to_correct[index_col] for index_col in error_info]:
+    for cell in [excel_ws_to_correct[index_col] for index_col in error_index_col]:
         cell.value="发明创造科技制作类"
     excel_after_correct=Favor.Xio.stream_excel_to_frontend(excel_wb_to_correct)
     
     # 后端检验发现无错误值，然后假设前端用户确认无误，并将输出路径设置为func3_file_save_path，后端接收并保存excel
-    error_index_col_after_correct=Favor.validate_filled_excel(excel_after_correct)[0]
+    error_index_col_after_correct=Favor.validate_filled_excel(excel_after_correct)[-1]
     if not error_index_col_after_correct:
         print(f"func3:\n经程序检验，表格无误")
         print("收到前端用户发送的保存地址，最终excel已保存")

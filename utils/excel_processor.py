@@ -2,7 +2,7 @@ import openpyxl as px
 import pandas as pd
 import numpy as np
 from copy import copy,deepcopy
-import io,json,re,os,warnings,shutil,sys
+import io,json,re,os,warnings,shutil,sys,zipfile
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -45,7 +45,7 @@ class Excel_IO:
             excel_bytes = io.BytesIO(excel_data)
             return self.read_excel_file(excel_bytes)
 
-
+    
     def save_excel(self, excel_wb, excel_path):
         """openpyxl传输wb对象到excel文件"""
         try:
@@ -161,7 +161,7 @@ class Excel_attribute:
                 
     def axising_range_value_df(self,range_value_df,ws_row=None,ws_column=None,set_Nan=False):
         """获取/赋空df的特定行/列值"""
-        if not set_Nan:
+        if not set_Nan:#? 为什么不return
             if ws_row:range_value_df.iloc[ws_row,:] 
             if ws_column:range_value_df.iloc[:,ws_column]
         else:
@@ -222,16 +222,21 @@ class Excel_attribute:
                 ws.cell(row=start_row + r_idx - 1, column=c_idx, value=value)
                 
     def modify_cell_style(self, cell, style_dict,not_modify_attr=[]):
-        """使用字典参数来修改某一单元格的样式属性，可自选不修改的属性
+        """使用字典参数来修改某一单元格的样式和值属性，可自选不修改的属性
             ['font', 'border', 'fill', 'number_format',
             'protection', 'alignment', 'hyperlink', 'value']"""
         # Check if cell is a string reference or a Cell object
         if isinstance(cell, str):
             cell = self.excel_ws[cell]
         # Define all possible attributes that can be modified
+
         possible_attributes = [
             'font', 'border', 'fill', 'number_format',
-            'protection', 'alignment', 'hyperlink' ]
+            'protection', 'alignment', 'hyperlink' ,'value',"_style"]
+        for key in style_dict:
+            if key not in possible_attributes:
+                print(f"您设置的key{key}并不属于常见的单元格属性，请自行核查")
+                break
         if not_modify_attr:
             possible_attributes = [attr for attr  in possible_attributes if attr not in not_modify_attr]
         
@@ -241,7 +246,7 @@ class Excel_attribute:
         # Iterate over possible attributes and update if provided in style_dict
         for attr_name in possible_attributes:
             if attr_name in style_dict:
-                setattr(cell, attr_name, style_dict[attr_name])
+                setattr(cell, attr_name, copy(style_dict[attr_name]))
 
 
     def modify_CertainRange_style(self, cell_range, style_dict, not_modify_attr=[]):
@@ -278,7 +283,8 @@ class Excel_attribute:
             'protection': copy(cell.protection),
             'alignment': copy(cell.alignment),
             'hyperlink': cell.hyperlink,
-            'value': cell.value
+            'value': cell.value,
+            "_style":cell._style
         }
         if len(not_get_attr)>0:
             for i in not_get_attr:
@@ -296,6 +302,31 @@ class Excel_attribute:
             cell_attributes = self.get_cell_attributes(cell_reference,not_get_attr=not_get_attr)
             row_attributes.update(cell_attributes)
         return row_attributes
+    
+    def get_CertainRange_attributes(self, cell_range, not_get_attr=[]):
+        """根据字典参数遍历获取某一连续单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等，
+        包括value和hyperlink,但可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
+        cells_attributes = {}
+        # Convert cell range to actual range
+        min_col, min_row, max_col, max_row = range_boundaries(cell_range)
+        
+        # Iterate over all cells in the range
+        for row in range(min_row, max_row + 1):
+            for col in range(min_col, max_col + 1):
+                col_letter=get_column_letter(col)
+                cells_attributes.update(self.get_cell_attributes(col_letter+str(row), not_get_attr=not_get_attr))
+        return cells_attributes
+    
+    def get_MutipleRange_attributes(self, cell_ranges_str, not_get_attr=[]):
+        """根据字典参数遍历获取某一多分布单元格区域的字体、边框、填充、数字格式、保护方式、超文本、对齐格式等，
+        包括value和hyperlink,但可自选不修改的属性['font', 'border', 'fill', 'number_format',
+            'protection', 'alignment', 'hyperlink', 'value']"""
+        cells_attributes = {}
+        cell_ranges_list=[i.strip() for i in cell_ranges_str.split(",")]
+        for cell_range in cell_ranges_list:
+            cells_attributes.update(self.get_CertainRange_attributes(cell_range, not_get_attr=not_get_attr))
+        return cells_attributes
     
     def get_merge_ranges_str(self):
         merge_ranges_list = []
@@ -459,61 +490,13 @@ class Excel_attribute:
                 dv.add(sqref)
 
     def set_validation_rules_and_example(self, one_index_col, field_name, rule_list, example):
-        """
+        """#进一步：若是有限选项，就传list；若是定类，就传str pattern 屎山做法
         设置规则和样例到指定单元格，并且如果规则过长，只使用规则列表的前n项，
         使得len(",".join(rule_list[:n]))<20，并在后面加上"等{len(rule_list)}个选项"。
         同时设置单元格字体为红色。#进一步：调整样式；富文本？
         """
         # 计算合适的规则字符串长度
-        rule_display = ",".join(rule_list)
-        if len(rule_display) > 20:
-            rule_display = ""  # 初始化规则显示字符串
-            count = 0  # 记录已经拼接的字符数量
-            for rule in rule_list:
-                if count + len(rule) < 20:
-                    if rule_display:  # 如果不是第一个规则，添加逗号
-                        rule_display += ","
-                    rule_display += rule
-                    count += len(rule) + 1  # 加1因为逗号的长度
-                else:
-                    break
-            rule_display += f"等{len(rule_list)}个选项"
-
-        """# 设置单元格的值
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, Alignment
-        from openpyxl.styles.differential import DifferentialStyle
-        from openpyxl.formatting.rule import Rule
-        from openpyxl.styles import Color, PatternFill, Font, Border
-
-        # 假设rule_display和example是已经定义好的变量
-        rule_display = "这是规则"
-        example = "这是样例"
-
-        # 创建富文本字符串
-        rich_text = openpyxl.styles.RichText()
-
-        # 添加红色字体的片段
-        red_font = Font(color="FF0000", size=7)
-        rich_text.append("·规则：", red_font)
-        rich_text.append(rule_display)
-
-        # 添加换行符
-        rich_text.append("\n")
-
-        # 继续添加红色字体的片段
-        rich_text.append("·样例：", red_font)
-        rich_text.append(example)
-
-        # 现在假设self.excel_ws已经指向一个Worksheet对象
-        cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]
-
-        # 将富文本字符串赋值给单元格
-        cell.value = rich_text
-
-        # 设置单元格的自动换行
-        cell.alignment = Alignment(wrapText=True)"""
-
+        rule_display = "，".join(rule_list)
         cell_value = f"·规则：{rule_display}\n·样例：{example}"
         cell = self.excel_ws[f"{one_index_col[0]}{int(one_index_col[1])+1}"]#进一步：如何确认规则样例行就在字段的下一行？请调查核实。或者说，字段行下一行如何确保没有内容？
         cell.value = cell_value
@@ -657,7 +640,47 @@ class Style_template:
     def apply_to_data(self): 
         """应用样式到数据行。"""
 if 1:
-    
+    def stream_files_to_zip(file_data):
+        "将文件名与io.bytes的字典保存到zip流输出"
+
+        # 创建Zip文件的io.BytesIO对象
+        zip_buffer = io.BytesIO()
+
+        # 将文件数据直接写入到zip文件
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED) as zip_file:
+            for filename, data in file_data.items():
+                data.seek(0)
+                zip_file.writestr(filename, data.read())
+
+        # 准备好io.BytesIO对象以供下载
+        zip_buffer.seek(0)
+        return zip_buffer
+
+    def unzip_data_stream(zip_data_stream):
+        """
+        解压ZIP数据流，并返回内部文件的文件名与bytes数据流的字典。
+        
+        参数:
+        - zip_data_stream: ZIP压缩包的数据流 (bytes)。
+        
+        返回:
+        - 一个字典，键为文件名，值为对应文件的bytes数据流。
+        """
+        # 使用 BytesIO 将 bytes 数据流转换为一个类文件对象
+        zip_in_memory = io.BytesIO(zip_data_stream)
+        
+        # 创建一个字典来存储文件名与bytes数据流
+        file_contents = {}
+        
+        # 使用 zipfile 模块打开 ZIP 数据流
+        with zipfile.ZipFile(zip_in_memory, 'r') as zip_ref:
+            for file_name in zip_ref.namelist():
+                # 读取并存储每个文件的bytes数据流
+                with zip_ref.open(file_name) as file:
+                    file_contents[file_name] = file.read()
+                    
+        return file_contents
+
     # 一些简单的格式转换和读取           
     def convert_to_json_stream(data):
         """将Python数据类型转化为JSON格式的字符串，后端不再使用。"""

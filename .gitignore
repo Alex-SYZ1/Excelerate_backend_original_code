@@ -11,3 +11,6 @@ resources
 .vscode
 
 *_init__.py
+
+
+temp/

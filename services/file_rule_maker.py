@@ -2,13 +2,13 @@ import os,sys,io,random
 import openpyxl as px
 from openpyxl.styles import Font, Border, Side, PatternFill, Alignment, Protection
 from openpyxl.utils import get_column_letter,coordinate_to_tuple
-
+from typing import IO, List, Dict, Union
 
 """用于导入项目中不在同一文件夹的库"""
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import utils.excel_processor as XPRO
-import utils.string_processor as StringPRO
+from utils.string_processor import *
 class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性，贯穿始终
     def __init__(self):
         #创建空对象占位，后续修改值，供整个类使用
@@ -95,14 +95,14 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         Field_rules={col_index: 
             [name,dict(zip(["对应列下拉列表规则","程序预定义规则"],
                      [self.Sheet_dropdowns[col_index[0]] if col_index[0] in self.Sheet_dropdowns else [],
-                      self.predefined_rules[StringPRO.best_match(name,list(self.predefined_rules.keys()))]
+                      self.predefined_rules[best_match(name,list(self.predefined_rules.keys()))]
                       ]))] for col_index,(cell,name) in fields_index_col_to_cell_name.items() } 
             
         return Field_rules
 
 
     def create_final_rules_and_examples(self, 
-                                selected_field_rules:dict) -> (dict,"io.BytesIO in dict"):
+                                selected_field_rules:dict) -> Union[dict,IO[bytes]]:
         """
             从数据流接收  ：字段名与规则对应的字典
             输出到数据流  ：字段名与最终规则和样例对应的字典，含有最终规则和样例行、最终规则下拉列表的Excel文件
@@ -148,7 +148,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
        #设置规则样例行和最终规则样例dict，为1-1
         for one_index_col, (field_name, rule_list) in selected_field_rules.items():
             final_rules_and_examples[one_index_col]=[field_name,
-                                                     StringPRO.generate_strict_regex_and_example(rule_list)]
+                                                     generate_strict_regex_and_example(rule_list)]
             example=final_rules_and_examples[one_index_col][-1][-1]
             self.Xattr.set_validation_rules_and_example(one_index_col,field_name,rule_list,example)
         field_row=coordinate_to_tuple(one_index_col)[1]
@@ -169,7 +169,7 @@ class FileRuleMaker:#进一步：考虑将Xio对象作为FileRuleMaker的属性�
         # 将各个模式的规则dict写入self.file_rule_dict
         self.file_rule_dict={mode:
                                     {"".join([(str(int(i)+data_sep_row) if type(i)==int else i)
-                                        for i in StringPRO.coordinate_from_string(rule_dict_key)
+                                        for i in coordinate_from_string(rule_dict_key)
                                          ])
                                         :rule_dict_value
                                             for rule_dict_key,rule_dict_value in (final_rules_and_examples.items()) 
@@ -196,7 +196,7 @@ if "__main__" == __name__:
     excel_got.seek(0)
     
     #为保存最终xlsx文件至for_fuker.allprocess_xls文件夹做准备
-    excel_got_variables=StringPRO.get_filepath_variables(excel_got_path)
+    excel_got_variables=get_filepath_variables(excel_got_path)
     file_name=excel_got_variables["file_name"]
     file_basename,file_extension=excel_got_variables["file_basename"],excel_got_variables["file_extension"]
     

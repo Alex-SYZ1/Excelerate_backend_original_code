@@ -76,13 +76,22 @@ def check_cell_value(value1, value2):
     except ValueError:
         # 如果转换失败，直接比较原始值
         return value1 == value2
-import pandas as pd
 
 # 假设的 check_cell_value 函数
 def check_cell_value(value1, value2):
     return value1 == value2
 
+#错误信息
+def error_to_info(place,error_dict):
+    error,arera=list(error_dict.items())[0]
+    if error=="cell_coord":
+        error_info="，".join([f"{get_column_letter(col_letter)}{row}" for row,col_letter in arera])
+        return f"{place}中有【部分单元格】与其它表格不一致，请核查：\n{error_info}"
+    if error=="row_index":
+        return f"{place}中有【一整行】的内容与其它表格不一致，请核查：\n第{arera}行"
+    else:return f"其他未定义错误：{arera}"
 def verify_df(df1, df2):
+    # 表1是正确的参照表
     if df1.shape != df2.shape:
         return False, {}
     # 去除填充的上方左方单元格
@@ -95,17 +104,20 @@ def verify_df(df1, df2):
 
     # 比较行
     for index, (row1, row2) in enumerate(zip(df1.iterrows(), df2.iterrows())):
+        is_not_empty=lambda cell:not((pd.isna(cell)) or (type(cell) == str and "".join(cell.split())==""))
         row_index, rowData1 = row1
         _, rowData2 = row2
-        row_compare = [check_cell_value(cell1, cell2) for cell1, cell2 in zip(rowData1, rowData2)]
-
+        row_compare = [check_cell_value(cell1, cell2) for cell1, cell2 in zip(rowData1, rowData2) if is_not_empty(cell1)]
+        # print("rowData1",rowData1)
+        # print("rowData2",rowData2)
+        # print("row_compare",row_compare)
         if all(row_compare):
             continue
         elif not any(row_compare):
-            return False, {"row_index": row_index}
+            return False, {"row_index": row_index+1}
         else:
             wrong_rows.append(index)
-            wrong_cells.extend([(index, col_index) for col_index, correct in enumerate(row_compare) if not correct])
+            wrong_cells.extend([(index+1, col_index+1) for col_index, correct in enumerate(row_compare) if not correct])
     if wrong_rows==[]:return True,{}
     """# 检查错误的单元格是否集中在特定的列 #进一步。不是简单交换、交换后df相等
     wrong_cols = list(set([cell[1] for cell in wrong_cells]))
